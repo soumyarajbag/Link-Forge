@@ -1,0 +1,13 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "functions": {
+    "src/index.ts": { "maxDuration": 30, "memory": 1024 }
+  },
+  "rewrites": [
+    { "source": "/v1/:path*", "destination": "/src/index?route=/v1/:path*" },
+    { "source": "/health", "destination": "/src/index?route=/health" },
+    { "source": "/docs", "destination": "/src/index?route=/docs" },
+    { "source": "/openapi.yaml", "destination": "/src/index?route=/openapi.yaml" },
+    { "source": "/:slug", "destination": "/src/index?route=/r/:slug" }
+  ]
+}
