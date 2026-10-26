@@ -28,10 +28,6 @@ export const hostFromUrl = (value: string): string => {
     return '';
   }
 };
-export const isReservedHost = (value: string): boolean => {
-  const host = normalizeHost(value);
-  return !host || host === 'localhost' || host.startsWith('127.');
-};
 export const dateRange = (fromValue?: string, toValue?: string): { from: Date; to: Date } => {
   const now = new Date();
   const from =

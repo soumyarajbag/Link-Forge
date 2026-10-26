@@ -36,15 +36,7 @@ export function createContainer(config: AppConfig, database: MongoDatabase) {
   const invitationService = new InvitationService(workspaceRepository, authRepository, authorization, audit, email);
   const authService = new AuthService(authRepository, workspaceRepository, email, invitationService, config);
   const workspaceService = new WorkspaceService(workspaceRepository, authRepository, authorization, audit);
-  const linkService = new LinkService(
-    linkRepository,
-    workspaceRepository,
-    analyticsRepository,
-    adminRepository,
-    authorization,
-    audit,
-    config,
-  );
+  const linkService = new LinkService(linkRepository, analyticsRepository, adminRepository, authorization, audit, config);
   const apiKeyService = new ApiKeyService(apiKeyRepository, authorization, audit);
   const adminService = new AdminService(adminRepository, linkRepository, authorization, audit);
 

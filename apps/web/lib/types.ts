@@ -35,13 +35,16 @@ export type WorkspaceInvitation = {
   invited_by: string;
   expires_at: string;
 };
-export type Domain = {
+export type ApiKey = {
   id: string;
   workspace_id: string;
-  hostname: string;
-  kind: 'platform' | 'custom';
-  status: 'pending' | 'active' | 'disabled';
-  verified_at?: string;
+  created_by: string;
+  name: string;
+  prefix: string;
+  scopes: string[];
+  expires_at?: string;
+  last_used_at?: string;
+  created_at: string;
 };
 
 export type AnalyticsSummary = {

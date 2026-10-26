@@ -65,3 +65,7 @@ export function shortURL(slug: string, hostname?: string) {
 export function apiDocsURL() {
   return API_URL ? `${API_URL}/docs` : '/api/docs';
 }
+
+export function apiBaseURL() {
+  return API_URL || (typeof window !== 'undefined' ? `${window.location.origin}/api` : '/api');
+}

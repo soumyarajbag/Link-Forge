@@ -23,7 +23,6 @@ export class LinkController {
     const input = parseBody(createLinkSchema, request.body);
     const link = await this.service.create(request.actor!, {
       workspaceId: parseId(stringParam(request.params.workspaceID)),
-      domainId: input.domain_id ? parseId(input.domain_id) : undefined,
       destinationUrl: input.destination_url,
       slug: input.slug,
       redirectStatus: input.redirect_status,

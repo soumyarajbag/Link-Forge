@@ -34,7 +34,6 @@ export class MongoDatabase {
         { key: { workspace_id: 1, email: 1, status: 1 } },
         { key: { expires_at: 1 }, expireAfterSeconds: 0 },
       ],
-      domains: [{ key: { hostname: 1 }, unique: true }, { key: { workspace_id: 1, status: 1 } }],
       links: [
         { key: { hostname: 1, slug: 1 }, unique: true },
         { key: { workspace_id: 1, updated_at: -1 } },

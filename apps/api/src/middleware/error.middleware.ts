@@ -15,6 +15,7 @@ export const errorHandler: ErrorRequestHandler = (error, request, response, _nex
   const status = appError?.status || 500;
   const code = appError?.code || 'internal_error';
   const message = appError?.message || 'an unexpected error occurred';
+  response.locals.errorCode = code;
   if (!appError)
     console.error(
       JSON.stringify({ level: 'error', request_id: request.requestId, error: error instanceof Error ? error.message : String(error) }),

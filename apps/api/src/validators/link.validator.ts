@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { destinationUrl, objectId, optionalDate, tags } from './common.validator.js';
+import { destinationUrl, optionalDate, tags } from './common.validator.js';
 
 const qrSchema = z
   .object({
@@ -25,7 +25,6 @@ const ruleSchema = z.object({
   enabled: z.boolean().optional(),
 });
 export const createLinkSchema = z.object({
-  domain_id: objectId.optional(),
   destination_url: destinationUrl,
   slug: z.string().trim().max(50).optional(),
   redirect_status: z.union([z.literal(301), z.literal(302), z.literal(307), z.literal(308)]).optional(),

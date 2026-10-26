@@ -1,6 +1,5 @@
 import { ObjectId } from 'mongodb';
 import { BaseMongoRepository } from './base.repository.js';
-import type { DomainDocument } from '../models/domain.model.js';
 import type { ListOptions } from '../models/list-options.model.js';
 import type { MemberDocument } from '../models/member.model.js';
 import type { WorkspaceDocument } from '../models/workspace.model.js';
@@ -25,12 +24,6 @@ export interface WorkspaceRepository {
   listInvitations(workspaceId: ObjectId): Promise<WorkspaceInvitationDocument[]>;
   updateInvitation(invitation: WorkspaceInvitationDocument): Promise<void>;
   deleteInvitation(id: ObjectId): Promise<void>;
-  createDomain(domain: Omit<DomainDocument, '_id'>): Promise<DomainDocument>;
-  findDomain(id: ObjectId): Promise<DomainDocument | null>;
-  findDomainByHost(hostname: string): Promise<DomainDocument | null>;
-  listDomains(workspaceId: ObjectId): Promise<DomainDocument[]>;
-  updateDomain(domain: DomainDocument): Promise<void>;
-  deleteDomain(id: ObjectId): Promise<void>;
 }
 
 export class MongoWorkspaceRepository extends BaseMongoRepository implements WorkspaceRepository {
@@ -106,23 +99,5 @@ export class MongoWorkspaceRepository extends BaseMongoRepository implements Wor
   }
   async deleteInvitation(id: ObjectId) {
     await this.collection<WorkspaceInvitationDocument>(collections.invitations).deleteOne({ _id: id });
-  }
-  async createDomain(domain: Omit<DomainDocument, '_id'>) {
-    return this.insert<DomainDocument>(collections.domains, domain);
-  }
-  async findDomain(id: ObjectId) {
-    return this.collection<DomainDocument>(collections.domains).findOne({ _id: id });
-  }
-  async findDomainByHost(hostname: string) {
-    return this.collection<DomainDocument>(collections.domains).findOne({ hostname, status: 'active' });
-  }
-  async listDomains(workspaceId: ObjectId) {
-    return this.collection<DomainDocument>(collections.domains).find({ workspace_id: workspaceId }).sort({ created_at: 1 }).toArray();
-  }
-  async updateDomain(domain: DomainDocument) {
-    await this.collection<DomainDocument>(collections.domains).replaceOne({ _id: domain._id }, domain);
-  }
-  async deleteDomain(id: ObjectId) {
-    await this.collection<DomainDocument>(collections.domains).deleteOne({ _id: id });
   }
 }

@@ -43,7 +43,6 @@ Recommended production hostnames:
 - `app.example.com` — dashboard, marketing pages, and browser-facing `/api` rewrite.
 - `api.example.com` — direct API hostname for API keys, integrations, and operational checks.
 - `lnk.example.com` — primary short-link hostname.
-- User-owned custom domains — attached to the redirect project after verification.
 
 The web project will rewrite `/api/:path*` to the API project without changing the browser URL. This keeps browser authentication same-origin from the frontend’s perspective while retaining a separately deployable Express service. Vercel documents external rewrites as a reverse-proxy pattern, but the exact cookie and path behavior must be covered by a deployment smoke test.
 
@@ -112,7 +111,6 @@ Vercel Services can combine multiple runtimes in one project, so a single-projec
 │   │   ├── features/
 │   │   │   ├── auth/
 │   │   │   ├── links/
-│   │   │   ├── domains/
 │   │   │   ├── analytics/
 │   │   │   └── workspaces/
 │   │   ├── lib/
@@ -276,7 +274,6 @@ Before the full build, implement a tiny spike that proves:
 - `/slug` rewrite on `lnk.example.com` to the redirect handler.
 - Request path, query string, `Host`, `X-Forwarded-*`, cookies, and response `Location` survive rewrites.
 - One Express function can dispatch the required route set without an unexpected function-count issue.
-- Custom domains can reach the same redirect resolution path.
 
 If the spike fails, keep the same application architecture and use a portable Node.js deployment for `apps/api`; the Next.js deployment does not change.
 
@@ -381,7 +378,7 @@ Never return stack traces, MongoDB errors, token values, password details, or pr
 ### 7.3 Endpoint groups
 
 The current implementation is the vertical MVP slice. It includes the core
-auth, workspace/member/domain/invitation, link CRUD, redirect, QR, analytics
+auth, workspace/member/invitation, link CRUD, redirect, QR, analytics
 summary, API-key, abuse-report, and platform-admin routes listed below. OAuth,
 imports/exports, webhooks, conversions, and the broader analytics/export
 surface remain explicitly planned follow-up modules and are not exposed until
@@ -417,14 +414,6 @@ machine-readable `/openapi.json` and `/openapi.yaml` documents.
 - `DELETE /v1/workspaces/{workspaceId}/invitations/{invitationId}`
 - `GET /v1/invitations/{token}` (public invitation details)
 - `POST /v1/invitations/accept` (authenticated acceptance)
-
-#### Domains
-
-- `GET/POST /v1/workspaces/{workspaceId}/domains`
-- `GET /v1/domains/{domainId}`
-- `POST /v1/domains/{domainId}/verify`
-- `PATCH /v1/domains/{domainId}`
-- `DELETE /v1/domains/{domainId}`
 
 #### Links
 
@@ -473,8 +462,8 @@ the platform-administrator flag as the security boundary.
 
 #### Public redirect
 
-- `GET /{slug}` on a configured short domain.
-- `HEAD /{slug}` on a configured short domain.
+- `GET /{slug}` on the configured platform short-link hostname.
+- `HEAD /{slug}` on the configured platform short-link hostname.
 - `GET /{slug}/unlock` and `POST /{slug}/unlock` for password-protected links.
 
 All endpoints are described by the OpenAPI document served at `/openapi.yaml`; TypeScript types can be generated from that contract.
@@ -537,28 +526,12 @@ Pending invitations can be refreshed or revoked by workspace administrators.
 
 Indexes: unique workspace slug, unique `workspace_id + user_id`, `user_id + status`.
 
-### 8.4 `domains`
+### 8.4 `links`
 
 ```text
 _id
 workspace_id
 hostname
-kind: platform|custom
-status: pending|verified|active|disabled
-verification_method
-verification_nonce_hash
-vercel_domain_id
-created_at, verified_at, updated_at
-```
-
-Indexes: unique `hostname`, `workspace_id + status`.
-
-### 8.5 `links`
-
-```text
-_id
-workspace_id
-domain_id
 slug
 destination_url
 redirect_status: 301|302|307
@@ -575,7 +548,7 @@ created_by, created_at, updated_at, deleted_at
 
 Indexes:
 
-- unique `domain_id + slug`;
+- unique `hostname + slug`;
 - `workspace_id + updated_at` for dashboard lists;
 - `workspace_id + state + updated_at`;
 - `campaign_id + updated_at`;
@@ -583,11 +556,11 @@ Indexes:
 
 Keep deleted slugs reserved by default to avoid stale links and cache ambiguity.
 
-### 8.6 `click_events`
+### 8.5 `click_events`
 
 ```text
 _id
-link_id, workspace_id, domain_id
+link_id, workspace_id
 occurred_at
 event_type: redirect|qr_scan|conversion
 is_unique_estimate
@@ -606,19 +579,19 @@ Never persist raw IP by default. If a unique estimate is required, derive a rota
 
 Indexes: `link_id + occurred_at`, `workspace_id + occurred_at`, `retention_expires_at` TTL. Consider a MongoDB time-series collection after event volume justifies it.
 
-### 8.7 `analytics_daily`
+### 8.6 `analytics_daily`
 
 Stores precomputed counts by link/workspace/date and bounded dimensions. It powers dashboards after rollups so the UI does not repeatedly scan raw events.
 
 Indexes: unique `link_id + day + dimension_key`, `workspace_id + day`.
 
-### 8.8 Other collections
+### 8.7 Other collections
 
 - `email_tokens` — hashed one-time verification/reset tokens with TTL.
 - `api_keys` — prefix, hash, scopes, workspace, expiry, last-used, revoked state.
 - `webhooks` and `webhook_deliveries` — signed endpoint configuration and retry state.
 - `audit_logs` — actor, action, resource, redacted metadata, request ID, timestamps.
-- `abuse_reports` — reporter, link/domain, reason, status, review notes, resolution.
+- `abuse_reports` — reporter, link, reason, status, review notes, resolution.
 - `blocked_destinations` — normalized hostname/path patterns and reason.
 - `conversions` — signed conversion event and attribution metadata.
 
@@ -628,7 +601,7 @@ Indexes: unique `link_id + day + dimension_key`, `workspace_id + day`.
 
 1. Receive request and capture request ID, host, path, user agent, referrer, and Vercel geo headers when available.
 2. Normalize host and slug; reject invalid path shapes.
-3. Look up `{domain_id, slug}` using the unique index.
+3. Look up `{hostname, slug}` using the unique index.
 4. Check state, expiry, click limit, quarantine, and password requirement.
 5. Evaluate ordered routing rules using a bounded, deterministic evaluator.
 6. Build a sanitized analytics event.
@@ -669,7 +642,6 @@ app/
 │   ├── links/new/page.tsx
 │   ├── links/[linkId]/page.tsx
 │   ├── links/[linkId]/analytics/page.tsx
-│   ├── domains/page.tsx
 │   ├── workspace/page.tsx
 │   ├── team/page.tsx
 │   ├── api-keys/page.tsx
@@ -714,7 +686,7 @@ app/
 - CAPTCHA/turnstile extension point for anonymous and suspicious flows.
 - Email enumeration resistance.
 - Admin step-up authentication for suspension, quarantine, blocklist, secret, and billing actions.
-- Audit records for authentication, authorization changes, link changes, domain changes, exports, and admin actions.
+- Audit records for authentication, authorization changes, link changes, exports, and admin actions.
 - Security headers: HSTS, CSP, X-Content-Type-Options, Referrer-Policy, Permissions-Policy, and frame protections as appropriate.
 - Redact cookies, auth headers, destination query secrets, and raw user-agent/IP data from logs.
 - Dependency updates, SAST, secret scanning, SCA, and regular threat-model review.
@@ -728,7 +700,7 @@ Structured events should include:
 - route template and status;
 - duration and database duration;
 - workspace/user ID only when policy permits;
-- link/domain ID for redirect diagnostics;
+- link ID and request hostname for redirect diagnostics;
 - error code, not raw stack trace;
 - deployment/version identifier.
 
@@ -876,7 +848,7 @@ No secret is committed. Vercel Preview and Production variables are configured s
 
 ### Phase 3 — growth features
 
-- Custom domains, bulk import/export, password protection, smart routing, deep links, A/B testing, webhooks, scheduled reports, MFA.
+- Bulk import/export, password protection, smart routing, deep links, A/B testing, webhooks, scheduled reports, and MFA.
 
 ### Phase 4 — platform features
 
@@ -887,14 +859,13 @@ Each phase ends with a security review, performance measurement, and product acc
 ## 16. Technical decisions awaiting approval
 
 1. Approve two Vercel projects in one monorepo versus Vercel Services in one project.
-2. Approve the primary domains and whether a separate short domain is available.
+2. Approve the application, API, and single platform short-link hostnames.
 3. Approve server-side opaque browser sessions with HttpOnly cookies instead of browser-stored JWTs.
 4. Approve Argon2id and API-key support as the baseline authentication stack.
 5. Approve `302` as the default redirect code.
 6. Approve best-effort synchronous click capture for MVP followed by rollups; queue/stream comes later.
-7. Approve manual custom-domain setup in MVP, with automation in a later phase.
-8. Approve anonymous quick-shorten as disabled by default until abuse controls are tested.
-9. Approve a Vercel routing smoke test for the Node.js function adapter.
+7. Approve anonymous quick-shorten as disabled by default until abuse controls are tested.
+8. Approve a Vercel routing smoke test for the Node.js function adapter.
 
 ## 17. Research references
 

@@ -3,8 +3,8 @@ import type { AuthRepository } from '../repositories/auth.repository.js';
 import type { WorkspaceRepository } from '../repositories/workspace.repository.js';
 import type { Actor } from '../models/actor.model.js';
 import { errors } from '../utils/app-error.js';
-import { normalizeEmail, normalizeHost, isReservedHost } from '../utils/url.js';
-import { randomToken, hashToken } from '../utils/crypto.js';
+import { normalizeEmail } from '../utils/url.js';
+import { randomToken } from '../utils/crypto.js';
 import { isDuplicateKey } from '../config/database.js';
 import { AuthorizationService } from './authorization.service.js';
 import { AuditService } from './audit.service.js';
@@ -131,52 +131,5 @@ export class WorkspaceService {
     if (member.role === 'owner') throw errors.forbidden();
     await this.workspaces.deleteMember(member._id);
     await this.audit.record(actor.user._id, 'member.removed', 'workspace_member', member._id.toHexString(), workspaceId);
-  }
-  async createDomain(actor: Actor, workspaceId: ObjectId, hostnameValue: string) {
-    await this.authorization.workspace(actor, workspaceId, 'workspace:admin');
-    const hostname = normalizeHost(hostnameValue);
-    if (isReservedHost(hostname) || hostname.includes('/')) throw errors.validation();
-    const token = randomToken(24);
-    const now = new Date();
-    try {
-      const domain = await this.workspaces.createDomain({
-        workspace_id: workspaceId,
-        hostname,
-        kind: 'custom',
-        status: 'pending',
-        verification_token: hashToken(token),
-        created_at: now,
-        updated_at: now,
-      });
-      await this.audit.record(actor.user._id, 'domain.created', 'domain', domain._id.toHexString(), workspaceId);
-      return { domain, token };
-    } catch (error) {
-      if (isDuplicateKey(error)) throw errors.conflict();
-      throw error;
-    }
-  }
-  async listDomains(actor: Actor, workspaceId: ObjectId) {
-    await this.authorization.workspace(actor, workspaceId, 'workspace:read');
-    return this.workspaces.listDomains(workspaceId);
-  }
-  async verifyDomain(actor: Actor, domainId: ObjectId, token: string) {
-    const domain = await this.workspaces.findDomain(domainId);
-    if (!domain) throw errors.notFound();
-    await this.authorization.workspace(actor, domain.workspace_id, 'workspace:admin');
-    if (hashToken(token) !== domain.verification_token) throw errors.forbidden();
-    domain.status = 'active';
-    domain.verified_at = new Date();
-    domain.verification_token = undefined;
-    domain.updated_at = new Date();
-    await this.workspaces.updateDomain(domain);
-    await this.audit.record(actor.user._id, 'domain.verified', 'domain', domain._id.toHexString(), domain.workspace_id);
-    return domain;
-  }
-  async deleteDomain(actor: Actor, domainId: ObjectId) {
-    const domain = await this.workspaces.findDomain(domainId);
-    if (!domain) throw errors.notFound();
-    await this.authorization.workspace(actor, domain.workspace_id, 'workspace:admin');
-    await this.workspaces.deleteDomain(domainId);
-    await this.audit.record(actor.user._id, 'domain.deleted', 'domain', domainId.toHexString(), domain.workspace_id);
   }
 }

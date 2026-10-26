@@ -1,7 +1,6 @@
-import type { Request, Response } from 'express';
 import { asyncHandler, parseBody, parseId, sendData, sendMessage, stringParam } from '../utils/http.js';
 import { listOptions } from '../utils/pagination.js';
-import { domainSchema, memberSchema, verifyDomainSchema, workspaceSchema } from '../validators/workspace.validator.js';
+import { memberSchema, workspaceSchema } from '../validators/workspace.validator.js';
 import { WorkspaceService } from '../services/workspace.service.js';
 
 export class WorkspaceController {
@@ -55,28 +54,4 @@ export class WorkspaceController {
     );
     sendMessage(request, response, 200, 'member removed');
   });
-  domains = asyncHandler(async (request, response) =>
-    sendData(request, response, 200, {
-      domains: await this.service.listDomains(request.actor!, parseId(stringParam(request.params.workspaceID))),
-    }),
-  );
-  createDomain = asyncHandler(async (request, response) => {
-    const workspaceId = parseId(stringParam(request.params.workspaceID));
-    const result = await this.service.createDomain(request.actor!, workspaceId, parseBody(domainSchema, request.body).hostname);
-    const verification = this.serviceVerification(result.domain.hostname, result.token);
-    sendData(request, response, 201, { domain: result.domain, verification });
-  });
-  verifyDomain = asyncHandler(async (request, response) => {
-    const input = parseBody(verifyDomainSchema, request.body);
-    sendData(request, response, 200, {
-      domain: await this.service.verifyDomain(request.actor!, parseId(stringParam(request.params.domainID)), input.token),
-    });
-  });
-  deleteDomain = asyncHandler(async (request, response) => {
-    await this.service.deleteDomain(request.actor!, parseId(stringParam(request.params.domainID)));
-    sendMessage(request, response, 200, 'domain deleted');
-  });
-  private serviceVerification(hostname: string, token: string) {
-    return { type: 'dns_txt', hostname: `_linkforge.${hostname}`, value: token };
-  }
 }

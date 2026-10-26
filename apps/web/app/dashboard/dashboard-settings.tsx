@@ -1,55 +1,54 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { apiDocsURL, apiMutation, apiRequest, ApiError } from '@/lib/api';
-import type { Domain, WorkspaceInvitation, WorkspaceMember } from '@/lib/types';
+import { apiMutation, apiRequest, ApiError } from '@/lib/api';
+import type { WorkspaceInvitation, WorkspaceMember } from '@/lib/types';
 import { useDashboardContext } from './dashboard-shell';
 import { Icon } from '@/components/icons';
 import { Badge, Button, SectionLabel } from '@/components/ui';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ApiKeysSettings } from './dashboard-api-keys';
+import { ConfirmDialog } from '@/components/confirm-dialog';
 
 const memberRoles: Array<WorkspaceMember['role']> = ['admin', 'editor', 'analyst', 'viewer'];
 
 export function SettingsView() {
   const { user, workspace, workspaces, setWorkspace } = useDashboardContext();
+  const [activeTab, setActiveTab] = useState('workspace');
   const [name, setName] = useState(workspace.name);
   const [newWorkspaceName, setNewWorkspaceName] = useState('');
-  const [domains, setDomains] = useState<Domain[]>([]);
   const [members, setMembers] = useState<WorkspaceMember[]>([]);
   const [invitations, setInvitations] = useState<WorkspaceInvitation[]>([]);
-  const [newHostname, setNewHostname] = useState('');
   const [newMemberEmail, setNewMemberEmail] = useState('');
   const [newMemberRole, setNewMemberRole] = useState<WorkspaceMember['role']>('editor');
-  const [verification, setVerification] = useState<{ hostname: string; value: string } | null>(null);
-  const [tokens, setTokens] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
   const [memberBusyId, setMemberBusyId] = useState('');
+  const [invitationToRevoke, setInvitationToRevoke] = useState<WorkspaceInvitation | null>(null);
+  const [memberToRemove, setMemberToRemove] = useState<WorkspaceMember | null>(null);
   const [invitationLink, setInvitationLink] = useState('');
   const [saved, setSaved] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
 
   useEffect(() => {
+    const requestedTab = new URLSearchParams(window.location.search).get('tab');
+    if (['workspace', 'team', 'developer'].includes(requestedTab || '')) setActiveTab(requestedTab!);
+  }, []);
+
+  useEffect(() => {
     let mounted = true;
     setName(workspace.name);
-    setDomains([]);
     setMembers([]);
     setInvitations([]);
     setInvitationLink('');
-    setVerification(null);
-    setTokens({});
     setError('');
     setMessage('');
 
-    Promise.all([
-      apiRequest<{ domains: Domain[] }>(`/v1/workspaces/${workspace.id}/domains`),
-      apiRequest<{ members: WorkspaceMember[] }>(`/v1/workspaces/${workspace.id}/members`),
-    ])
-      .then(async ([domainData, memberData]) => {
+    apiRequest<{ members: WorkspaceMember[] }>(`/v1/workspaces/${workspace.id}/members`)
+      .then(async (memberData) => {
         if (!mounted) return;
-        setDomains(domainData.domains);
         setMembers(memberData.members);
         const role = memberData.members.find((member) => member.user_id === user.id)?.role;
         if (role !== 'owner' && role !== 'admin') return;
@@ -66,6 +65,14 @@ export function SettingsView() {
 
   const currentMember = members.find((member) => member.user_id === user.id);
   const canManage = currentMember?.role === 'owner' || currentMember?.role === 'admin';
+
+  function changeTab(value: string) {
+    setActiveTab(value);
+    const url = new URL(window.location.href);
+    if (value === 'workspace') url.searchParams.delete('tab');
+    else url.searchParams.set('tab', value);
+    window.history.replaceState({}, '', `${url.pathname}${url.search}${url.hash}`);
+  }
 
   async function saveWorkspace() {
     if (!name.trim()) return;
@@ -135,13 +142,13 @@ export function SettingsView() {
   }
 
   async function revokeInvitation(invitation: WorkspaceInvitation) {
-    if (!window.confirm(`Revoke the invitation for ${invitation.email}?`)) return;
     setMemberBusyId(invitation.id);
     setError('');
     setMessage('');
     try {
       await apiMutation(`/v1/workspaces/${workspace.id}/invitations/${invitation.id}`, undefined, 'DELETE');
       await loadInvitations();
+      setInvitationToRevoke(null);
       setMessage('Invitation revoked.');
     } catch (cause: unknown) {
       setError(cause instanceof ApiError ? cause.message : 'Unable to revoke invitation.');
@@ -166,13 +173,13 @@ export function SettingsView() {
   }
 
   async function removeMember(member: WorkspaceMember) {
-    if (!window.confirm(`Remove ${member.user?.display_name || member.user?.email || 'this member'} from the workspace?`)) return;
     setMemberBusyId(member.user_id);
     setError('');
     setMessage('');
     try {
       await apiMutation(`/v1/workspaces/${workspace.id}/members/${member.user_id}`, undefined, 'DELETE');
       await loadMembers();
+      setMemberToRemove(null);
       setMessage('Member removed from this workspace.');
     } catch (cause: unknown) {
       setError(cause instanceof ApiError ? cause.message : 'Unable to remove member.');
@@ -181,59 +188,21 @@ export function SettingsView() {
     }
   }
 
-  async function addDomain() {
-    if (!newHostname.trim()) return;
-    setBusy(true);
-    setError('');
-    setMessage('');
-    try {
-      const data = await apiMutation<{ domain: Domain; verification: { hostname: string; value: string } }>(
-        `/v1/workspaces/${workspace.id}/domains`,
-        { hostname: newHostname.trim() },
-        'POST',
-      );
-      setDomains((current) => [...current, data.domain]);
-      setVerification(data.verification);
-      setNewHostname('');
-      setMessage('Domain added. Complete the DNS verification step.');
-    } catch (cause: unknown) {
-      setError(cause instanceof ApiError ? cause.message : 'Unable to add domain.');
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function verifyDomain(domainId: string) {
-    setBusy(true);
-    setError('');
-    setMessage('');
-    try {
-      const data = await apiMutation<{ domain: Domain }>(`/v1/domains/${domainId}/verify`, { token: tokens[domainId] }, 'POST');
-      setDomains((current) => current.map((domain) => (domain.id === domainId ? data.domain : domain)));
-      setMessage('Domain verified.');
-    } catch (cause: unknown) {
-      setError(cause instanceof ApiError ? cause.message : 'Unable to verify domain.');
-    } finally {
-      setBusy(false);
-    }
-  }
-
   return (
     <div className="animate-slide-up max-w-5xl">
       <SectionLabel
         eyebrow="Make it yours"
         title="Workspace settings"
-        detail="Create and switch workspaces, manage team access, and configure custom domains through the API."
+        detail="Create and switch workspaces, manage team access, and configure developer credentials."
       />
       {error && <div className="mb-5 rounded-2xl border border-coral/20 bg-coral-50 px-4 py-3 text-sm text-coral-600">{error}</div>}
       {message && <div className="mb-5 rounded-2xl border border-[#47B77A]/30 bg-mint px-4 py-3 text-sm text-[#2C8350]">{message}</div>}
-      <Tabs defaultValue="workspace" className="w-full">
+      <Tabs value={activeTab} onValueChange={changeTab} className="w-full">
         <div className="overflow-x-auto pb-1">
           <TabsList className="w-max min-w-full justify-start sm:min-w-0">
             <TabsTrigger value="workspace">Workspace</TabsTrigger>
             <TabsTrigger value="team">Team access</TabsTrigger>
-            <TabsTrigger value="domains">Domains</TabsTrigger>
-            <TabsTrigger value="security">Security & defaults</TabsTrigger>
+            {canManage && <TabsTrigger value="developer">Developer</TabsTrigger>}
           </TabsList>
         </div>
         <TabsContent value="workspace" className="space-y-5">
@@ -253,7 +222,7 @@ export function SettingsView() {
           <SettingsCard
             icon="users"
             title="Your workspaces"
-            detail={`${workspaces.length} ${workspaces.length === 1 ? 'workspace' : 'workspaces'} available. Select one to manage its links, members, and domains.`}
+            detail={`${workspaces.length} ${workspaces.length === 1 ? 'workspace' : 'workspaces'} available. Select one to manage its links, members, and settings.`}
           >
             <div className="grid gap-3 sm:grid-cols-2">
               {workspaces.map((item) => {
@@ -354,7 +323,7 @@ export function SettingsView() {
                     <button
                       type="button"
                       disabled={memberBusyId === member.user_id}
-                      onClick={() => removeMember(member)}
+                      onClick={() => setMemberToRemove(member)}
                       className="rounded-xl px-3 py-2 text-xs font-semibold text-coral-600 hover:bg-coral-50 disabled:opacity-50"
                     >
                       Remove
@@ -408,7 +377,7 @@ export function SettingsView() {
                           <button
                             type="button"
                             disabled={memberBusyId === invitation.id}
-                            onClick={() => revokeInvitation(invitation)}
+                            onClick={() => setInvitationToRevoke(invitation)}
                             className="self-start rounded-xl px-3 py-2 text-xs font-semibold text-coral-600 hover:bg-coral-50 disabled:opacity-50 sm:self-auto"
                           >
                             Revoke
@@ -433,93 +402,40 @@ export function SettingsView() {
             )}
           </SettingsCard>
         </TabsContent>
-        <TabsContent value="domains" className="space-y-5">
-          <SettingsCard icon="globe" title="Branded domains" detail="Use a domain that already feels like you.">
-            <div className="space-y-3">
-              {domains.map((domain) => (
-                <div key={domain.id} className="rounded-2xl border border-ink/[.08] bg-paper p-4">
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <p className="text-sm font-semibold">{domain.hostname}</p>
-                      <p className="mt-1 text-[11px] text-ink/40">{domain.kind === 'custom' ? 'Custom domain' : 'Platform domain'}</p>
-                    </div>
-                    <Badge tone={domain.status === 'active' ? 'green' : domain.status === 'pending' ? 'orange' : 'neutral'}>
-                      {domain.status}
-                    </Badge>
-                  </div>
-                  {domain.status === 'pending' && (
-                    <div className="mt-3 flex flex-col gap-2 sm:flex-row">
-                      <Input
-                        value={tokens[domain.id] || ''}
-                        onChange={(event) => setTokens((current) => ({ ...current, [domain.id]: event.target.value }))}
-                        placeholder="DNS verification token"
-                        className="min-w-0 flex-1 rounded-xl border border-ink/10 bg-white px-3 py-2 text-xs outline-none"
-                      />
-                      <Button
-                        disabled={busy || !tokens[domain.id] || !canManage}
-                        onClick={() => verifyDomain(domain.id)}
-                        className="px-3 py-2"
-                      >
-                        Verify
-                      </Button>
-                    </div>
-                  )}
-                </div>
-              ))}
-              {domains.length === 0 && <p className="rounded-2xl bg-paper p-4 text-sm text-ink/45">No domains configured yet.</p>}
-            </div>
-            <div className="mt-4 flex flex-col gap-2 sm:flex-row">
-              <Input
-                value={newHostname}
-                onChange={(event) => setNewHostname(event.target.value)}
-                placeholder="go.example.com"
-                disabled={!canManage}
-                className="min-w-0 flex-1 rounded-xl border border-ink/10 bg-paper px-3.5 py-3 text-sm outline-none disabled:opacity-50"
-              />
-              <Button disabled={busy || !newHostname.trim() || !canManage} onClick={addDomain}>
-                Add domain
-              </Button>
-            </div>
-            {verification && (
-              <div className="mt-4 rounded-2xl border border-coral/15 bg-coral-50 p-4 text-xs text-coral-700">
-                <p className="font-semibold">Add this DNS TXT record before verifying:</p>
-                <p className="mt-2 break-all">Host: {verification.hostname}</p>
-                <p className="mt-1 break-all">Value: {verification.value}</p>
-              </div>
-            )}
-          </SettingsCard>
-        </TabsContent>
-        <TabsContent value="security" className="space-y-5">
-          <SettingsCard icon="shield" title="Security" detail="Keep your account and workspace protected.">
-            <SettingRow
-              title="Two-step verification"
-              copy="Add another layer when signing in."
-              action={<Badge tone="orange">Coming soon</Badge>}
-            />
-            <SettingRow
-              title="API keys"
-              copy="Scoped API key management is available through the backend API and Swagger documentation."
-              action={
-                <a href={apiDocsURL()} target="_blank" rel="noreferrer" className="text-xs font-semibold text-coral-600">
-                  Open API docs
-                </a>
-              }
-            />
-          </SettingsCard>
-          <SettingsCard icon="link" title="Link defaults" detail="Defaults currently enforced by the backend.">
-            <SettingRow
-              title="Default redirect"
-              copy="Temporary redirects keep destinations editable."
-              action={<Badge tone="blue">302</Badge>}
-            />
-            <SettingRow
-              title="Analytics retention"
-              copy="Click events are retained according to backend configuration."
-              action={<span className="text-xs font-semibold text-ink/60">Configured on API</span>}
-            />
-          </SettingsCard>
-        </TabsContent>
+        {canManage && (
+          <TabsContent value="developer" className="space-y-5">
+            <ApiKeysSettings workspaceId={workspace.id} workspaceName={workspace.name} />
+          </TabsContent>
+        )}
       </Tabs>
+      <ConfirmDialog
+        open={Boolean(invitationToRevoke)}
+        onOpenChange={(open) => {
+          if (!open) setInvitationToRevoke(null);
+        }}
+        title="Revoke this invitation?"
+        description={`${invitationToRevoke?.email || 'This recipient'} will no longer be able to use the invitation to join ${workspace.name}.`}
+        confirmLabel="Revoke invitation"
+        pendingLabel="Revoking…"
+        busy={Boolean(invitationToRevoke && memberBusyId === invitationToRevoke.id)}
+        onConfirm={() => {
+          if (invitationToRevoke) return revokeInvitation(invitationToRevoke);
+        }}
+      />
+      <ConfirmDialog
+        open={Boolean(memberToRemove)}
+        onOpenChange={(open) => {
+          if (!open) setMemberToRemove(null);
+        }}
+        title="Remove this member?"
+        description={`${memberToRemove?.user?.display_name || memberToRemove?.user?.email || 'This member'} will lose access to ${workspace.name} and its links, analytics, and settings.`}
+        confirmLabel="Remove member"
+        pendingLabel="Removing…"
+        busy={Boolean(memberToRemove && memberBusyId === memberToRemove.user_id)}
+        onConfirm={() => {
+          if (memberToRemove) return removeMember(memberToRemove);
+        }}
+      />
     </div>
   );
 }
@@ -530,7 +446,7 @@ function SettingsCard({
   detail,
   children,
 }: {
-  icon: 'users' | 'globe' | 'shield' | 'link' | 'settings';
+  icon: 'users' | 'settings';
   title: string;
   detail: string;
   children: React.ReactNode;
@@ -548,16 +464,5 @@ function SettingsCard({
       </CardHeader>
       <CardContent className="p-5 pt-0 sm:p-7 sm:pt-0">{children}</CardContent>
     </Card>
-  );
-}
-function SettingRow({ title, copy, action }: { title: string; copy: string; action: React.ReactNode }) {
-  return (
-    <div className="flex items-center justify-between gap-4 border-t border-ink/[.07] py-4 first:border-t-0 first:pt-0 last:pb-0">
-      <div>
-        <p className="text-sm font-medium">{title}</p>
-        <p className="mt-1 text-xs text-ink/40">{copy}</p>
-      </div>
-      {action}
-    </div>
   );
 }

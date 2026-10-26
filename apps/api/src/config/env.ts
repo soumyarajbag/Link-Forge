@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 const rawEnv = z.object({
   APP_ENV: z.string().default('development'),
+  LOG_FORMAT: z.enum(['pretty', 'json']).optional(),
   PORT: z.coerce.number().int().positive().default(8080),
   MONGODB_URI: z.string().min(1).default('mongodb://localhost:27017'),
   MONGODB_DATABASE: z.string().min(1).default('linkforge'),
@@ -34,6 +35,7 @@ const rawEnv = z.object({
 
 export type AppConfig = {
   environment: string;
+  logFormat: 'pretty' | 'json';
   port: number;
   mongoUri: string;
   database: string;
@@ -93,6 +95,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
   if (parsed.APP_ENV === 'production' && parsed.EXPOSE_DEV_TOKENS) throw new Error('EXPOSE_DEV_TOKENS must be false in production');
   return {
     environment: parsed.APP_ENV,
+    logFormat: parsed.LOG_FORMAT || (parsed.APP_ENV === 'production' ? 'json' : 'pretty'),
     port: parsed.PORT,
     mongoUri: parsed.MONGODB_URI,
     database: parsed.MONGODB_DATABASE,

@@ -10,11 +10,12 @@ import { requireAuthentication } from './middleware/auth.middleware.js';
 import { csrfProtection } from './middleware/csrf.middleware.js';
 import { errorHandler, notFoundHandler } from './middleware/error.middleware.js';
 import { requestContext } from './middleware/request-context.middleware.js';
+import { requestLogger } from './middleware/request-logger.middleware.js';
 import { adminRoutes } from './routes/admin.routes.js';
 import { apiKeyRoutes } from './routes/api-key.routes.js';
 import { authRoutes } from './routes/auth.routes.js';
 import { linkRoutes, redirectRoutes } from './routes/link.routes.js';
-import { domainRoutes, workspaceRoutes } from './routes/workspace.routes.js';
+import { workspaceRoutes } from './routes/workspace.routes.js';
 import { invitationRoutes, workspaceInvitationRoutes } from './routes/invitation.routes.js';
 import { openapiDocument } from './config/swagger.js';
 
@@ -27,6 +28,7 @@ export function createApp(container: AppContainer) {
   app.disable('x-powered-by');
 
   app.use(requestContext);
+  app.use(requestLogger({ format: config.logFormat }));
   app.use((helmet as unknown as () => RequestHandler)());
   app.use(cors({ origin: config.allowedOrigins, credentials: true }));
   app.use(express.json({ limit: '1mb', strict: true }));
@@ -78,7 +80,6 @@ export function createApp(container: AppContainer) {
   app.use('/v1/workspaces', workspaceRoutes(controllers.workspace));
   app.use('/v1/workspaces', workspaceInvitationRoutes(controllers.invitation));
   app.use('/v1/invitations', invitationRoutes(controllers.invitation));
-  app.use('/v1/domains', domainRoutes(controllers.workspace));
   app.use('/v1', linkRoutes(controllers.link));
   app.use('/v1', apiKeyRoutes(controllers.apiKey));
   app.use('/v1/admin', adminRoutes(controllers.admin));

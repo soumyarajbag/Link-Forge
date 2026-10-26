@@ -3,7 +3,6 @@ export const collections = {
   workspaces: 'workspaces',
   members: 'workspace_members',
   invitations: 'workspace_invitations',
-  domains: 'domains',
   links: 'links',
   sessions: 'sessions',
   clickEvents: 'click_events',

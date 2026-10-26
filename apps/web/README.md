@@ -48,7 +48,8 @@ lib/                    API client and shared application types
 - `/dashboard` - live workspace click totals, link activity, pause/restore, and creation.
 - `/dashboard/links` - live searchable link library, filters, copy, pause, and creation.
 - `/dashboard/analytics` - live seven-day link analytics, device/country/referrer breakdowns, and CSV export.
-- `/dashboard/settings` - live workspace creation, rename, workspace switching, member role management, email invitations, invitation revocation, and custom-domain registration/verification.
+- `/dashboard/settings` - tabbed workspace management for workspace creation, rename, switching, member roles, email invitations, and Owner/Admin API-key creation and revocation.
+- `/dashboard/api-docs` - API-key authentication, request examples, scope-to-endpoint mapping, response conventions, errors, and security guidance.
 - `/dashboard/admin` - platform-wide counts, paginated users, workspaces, and links, audit activity, abuse-report moderation, link quarantine, and destination blocking; visible only when `is_platform_admin` is true.
 
 ## API deployment

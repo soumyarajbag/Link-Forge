@@ -24,6 +24,7 @@ import { Input } from '@/components/ui/input';
 import { apiMutation, apiRequest, ApiError, shortURL } from '@/lib/api';
 import type { AbuseReport, AdminLink, AdminOverview, AdminUser, AdminWorkspace, AuditLog, BlockedDestination } from '@/lib/types';
 import { useDashboardContext } from './dashboard-shell';
+import { ConfirmDialog } from '@/components/confirm-dialog';
 
 type AdminTab = 'overview' | 'users' | 'workspaces' | 'links' | 'activity' | 'moderation';
 type StatusVariant = 'secondary' | 'success' | 'warning' | 'destructive' | 'purple' | 'info';
@@ -58,6 +59,7 @@ export function PlatformAdminView() {
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
   const [refreshKey, setRefreshKey] = useState(0);
+  const [linkToQuarantine, setLinkToQuarantine] = useState<AdminLink | null>(null);
 
   useEffect(() => {
     if (!user.is_platform_admin) {
@@ -161,12 +163,12 @@ export function PlatformAdminView() {
   }
 
   async function quarantine(link: AdminLink) {
-    if (!window.confirm(`Quarantine ${link.hostname}/${link.slug}? It will stop redirecting immediately.`)) return;
     setActionId(link.id);
     setError('');
     setMessage('');
     try {
       await apiMutation(`/v1/admin/links/${link.id}/quarantine`);
+      setLinkToQuarantine(null);
       setMessage(`/${link.slug} has been quarantined.`);
       setRefreshKey((value) => value + 1);
     } catch (cause: unknown) {
@@ -284,7 +286,7 @@ export function PlatformAdminView() {
       ) : tab === 'workspaces' ? (
         <WorkspacesPanel workspaces={workspaces} />
       ) : tab === 'links' ? (
-        <LinksPanel links={links} actionId={actionId} onQuarantine={quarantine} />
+        <LinksPanel links={links} actionId={actionId} onQuarantine={setLinkToQuarantine} />
       ) : tab === 'activity' ? (
         <ActivityPanel logs={auditLogs} />
       ) : (
@@ -308,6 +310,20 @@ export function PlatformAdminView() {
           noun={tab === 'activity' ? 'events' : tab === 'moderation' ? 'reports' : tab}
         />
       )}
+      <ConfirmDialog
+        open={Boolean(linkToQuarantine)}
+        onOpenChange={(open) => {
+          if (!open) setLinkToQuarantine(null);
+        }}
+        title="Quarantine this short link?"
+        description={`${linkToQuarantine?.hostname || 'This link'}/${linkToQuarantine?.slug || ''} will stop redirecting immediately. Its record and audit history will be preserved for moderation.`}
+        confirmLabel="Quarantine link"
+        pendingLabel="Quarantining…"
+        busy={Boolean(linkToQuarantine && actionId === linkToQuarantine.id)}
+        onConfirm={() => {
+          if (linkToQuarantine) return quarantine(linkToQuarantine);
+        }}
+      />
     </div>
   );
 }
@@ -427,7 +443,7 @@ function UsersPanel({ users }: { users: AdminUser[] }) {
                 {item.email_verified_at ? formatDate(item.email_verified_at) : 'Pending verification'}
               </td>
               <td className="px-5 py-4">
-                {item.is_platform_admin ? <Badge variant="purple">Platform admin</Badge> : <Badge variant="secondary">User</Badge>}
+                {item.is_platform_admin ? <Badge variant="purple">Platform Admin</Badge> : <Badge variant="secondary">User</Badge>}
               </td>
               <td className="px-5 py-4 text-xs text-muted-foreground">{formatDate(item.created_at)}</td>
             </tr>
@@ -771,9 +787,6 @@ function auditOperation(action: string) {
     'member.added': 'added a workspace member',
     'member.updated': "changed a member's role or permissions",
     'member.removed': 'removed a workspace member',
-    'domain.created': 'added a custom domain',
-    'domain.verified': 'verified a custom domain',
-    'domain.deleted': 'removed a custom domain',
     'link.created': 'created a short link',
     'link.updated': 'updated a short link',
     'link.deleted': 'deleted a short link',

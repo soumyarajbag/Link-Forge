@@ -17,7 +17,6 @@ export type RedirectStatus = 301 | 302 | 307 | 308;
 
 export type LinkDocument = BaseDocument & {
   workspace_id: ObjectId;
-  domain_id?: ObjectId;
   hostname: string;
   slug: string;
   destination_url: string;

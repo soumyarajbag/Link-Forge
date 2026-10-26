@@ -9,6 +9,4 @@ export const memberSchema = z.object({
 });
 export const invitationSchema = z.object({ email, role: z.enum(['admin', 'editor', 'analyst', 'viewer']) });
 export const invitationTokenSchema = z.object({ token: z.string().min(32).max(512) });
-export const domainSchema = z.object({ hostname: z.string().trim().min(1).max(253) });
-export const verifyDomainSchema = z.object({ token: z.string().min(1).max(512) });
 export const workspaceIdSchema = z.object({ workspaceID: objectId });

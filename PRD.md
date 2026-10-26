@@ -7,12 +7,12 @@
 
 ## 1. Product summary
 
-LinkForge is a link-management platform for creating short, branded, measurable URLs. It combines the simple experience of a public URL shortener with the campaign, team, analytics, custom-domain, QR-code, and smart-routing capabilities expected from modern link platforms.
+LinkForge is a link-management platform for creating short, memorable, measurable URLs. It combines the simple experience of a public URL shortener with campaign, team, analytics, QR-code, and smart-routing capabilities.
 
 The product has three surfaces:
 
 1. A public marketing and quick-shorten experience.
-2. An authenticated dashboard for links, workspaces, domains, campaigns, QR codes, and analytics.
+2. An authenticated dashboard for links, workspaces, campaigns, QR codes, and analytics.
 3. A fast redirect and tracking service that resolves a short URL and sends the visitor to the correct destination.
 
 The initial deployment target is Vercel for both the Next.js frontend and Express/TypeScript backend, with MongoDB Atlas as the database. The architecture must remain portable if redirect traffic eventually outgrows serverless functions.
@@ -33,7 +33,7 @@ People can shorten a URL in seconds, but they struggle to:
 
 - remember and organize links after creation;
 - update a destination without changing a published URL;
-- use their own brand or domain;
+- create memorable aliases on the platform short-link hostname;
 - understand which campaign, channel, device, or location produced traffic;
 - collaborate safely with a team;
 - generate a reusable QR code;
@@ -48,11 +48,11 @@ Needs to shorten, customize, organize, share, edit, and measure links without le
 
 ### 4.2 Marketer or growth operator
 
-Needs branded domains, UTM governance, campaign folders, QR codes, dashboards, exports, conversion tracking, and reliable historical reports.
+Needs UTM governance, campaign folders, QR codes, dashboards, exports, conversion tracking, and reliable historical reports.
 
 ### 4.3 Agency or multi-brand operator
 
-Needs multiple workspaces/domains, team roles, client separation, bulk import/export, API access, and per-workspace analytics.
+Needs multiple workspaces, team roles, client separation, bulk import/export, API access, and per-workspace analytics.
 
 ### 4.4 Developer or automation user
 
@@ -60,7 +60,7 @@ Needs scoped API keys, idempotent link creation, predictable errors, webhooks, r
 
 ### 4.5 Platform administrator
 
-Needs to control users, workspaces, plans, domains, links, abuse reports, blocked destinations, audit logs, retention, and global service health.
+Needs to control users, workspaces, plans, links, abuse reports, blocked destinations, audit logs, retention, and global service health.
 
 ### 4.6 Public visitor
 
@@ -74,7 +74,7 @@ Needs the requested short URL to redirect quickly, safely, and consistently on d
 2. Make every created link searchable, editable, disable-able, and measurable.
 3. Provide clear analytics within one minute for normal traffic.
 4. Give workspace owners safe collaboration and delegated access.
-5. Support a branded primary short domain and a clean path to additional custom domains.
+5. Serve every short link through one configured platform short-link hostname.
 6. Keep the redirect path small enough to scale independently from the dashboard.
 7. Deploy frontend and backend from a monorepo using two Vercel projects and one MongoDB Atlas database.
 
@@ -123,7 +123,7 @@ These are engineering targets, not promises until load testing validates them:
 - Create a short link from an `http` or `https` destination.
 - Generate a collision-safe random slug.
 - Choose a custom alias subject to reserved-word, length, character, and uniqueness rules.
-- Choose a workspace-owned short domain.
+- Use the configured platform short-link hostname.
 - Edit destination, title, tags, notes, and campaign metadata.
 - Activate, pause, archive, restore, and soft-delete links.
 - Expiry by timestamp and optional click-count limit.
@@ -161,10 +161,10 @@ These are engineering targets, not promises until load testing validates them:
 #### Platform administration
 
 - Admin-only dashboard.
-- User, workspace, link, domain, and abuse-report search.
+- User, workspace, link, and abuse-report search.
 - Suspend/unsuspend users and workspaces.
 - Disable or quarantine links.
-- Destination/domain blocklist.
+- Destination blocklist.
 - Global click and sign-up summaries.
 - Audit-log search and export.
 - Plan/feature entitlement flags, even before billing is enabled.
@@ -179,8 +179,6 @@ These are engineering targets, not promises until load testing validates them:
 
 ### 6.2 Phase 1 — growth and team features
 
-- Multiple custom domains and domain verification instructions.
-- Branded domain link creation and per-domain analytics.
 - Bulk link creation from CSV and bulk export.
 - Folders, tags, campaigns, link bundles, and saved filters.
 - Password-protected links with a branded unlock page.
@@ -207,7 +205,7 @@ These are engineering targets, not promises until load testing validates them:
 - AI-assisted slug/title/tag suggestions with opt-in data handling.
 - Link cloaking/preview modes where legally and ethically appropriate; never use it to bypass safety controls.
 - High-volume event pipeline, precomputed rollups, and warehouse export.
-- Advanced domain routing, regional failover, and a non-Vercel redirect deployment option.
+- Regional redirect failover and a non-Vercel redirect deployment option.
 
 ## 7. Detailed functional requirements
 
@@ -217,7 +215,7 @@ These are engineering targets, not promises until load testing validates them:
 2. Destination is normalized but the user’s query string and path are preserved.
 3. Slugs are case-sensitive in storage but normalized to lowercase for the public product unless a future plan explicitly supports case-sensitive aliases.
 4. Reserved paths include `api`, `admin`, `auth`, `login`, `register`, `dashboard`, `docs`, `health`, `settings`, and system-owned paths.
-5. A slug is unique within a short domain, not necessarily globally across all domains.
+5. A slug is unique on the configured platform short-link hostname.
 6. Editing a destination does not change the slug or QR code.
 7. Paused, expired, click-limited, deleted, or quarantined links resolve to a controlled status page, never to a stale destination.
 8. Link deletion is soft deletion first; hard deletion is an admin/data-retention operation.
@@ -258,20 +256,7 @@ Each rule has a destination, status, active flag, and optional fallback. The sys
 
 Raw event retention defaults to 90 days. Daily/monthly aggregates remain longer according to the workspace plan and privacy policy.
 
-### 7.5 Custom domains
-
-- A workspace owner creates a domain record.
-- The system generates verification instructions and a nonce.
-- The owner adds a DNS TXT or CNAME record.
-- Verification is repeatable and auditable.
-- A verified domain may be attached to a workspace after platform-domain configuration succeeds.
-- The system validates HTTPS, host ownership, and reserved hostnames.
-- The link resolver uses the request `Host` plus slug to find the domain.
-- Domain removal is blocked while active links use it unless the owner explicitly chooses a migration action.
-
-The first release may support manual Vercel domain attachment and verification. Automated domain provisioning is a later integration because it depends on Vercel account permissions and plan capabilities.
-
-### 7.6 Authentication and authorization
+### 7.5 Authentication and authorization
 
 The authentication system must provide:
 
@@ -290,14 +275,14 @@ The authentication system must provide:
 
 Authorization must be enforced in the Express API for every protected operation. Frontend route guards are UX only and never the security boundary.
 
-### 7.7 Administration
+### 7.6 Administration
 
 Platform administrators can:
 
-- search and inspect users, workspaces, domains, links, and reports;
+- search and inspect users, workspaces, links, and reports;
 - suspend accounts and revoke all sessions;
 - quarantine links and destinations;
-- manage global reserved slugs and blocked domains;
+- manage global reserved slugs and blocked destination patterns;
 - inspect global aggregate analytics without exposing raw personal data unnecessarily;
 - view audit logs;
 - change feature flags and quota entitlements;
@@ -316,7 +301,6 @@ Admin actions require explicit permissions and produce immutable audit entries.
 | View analytics          |   Yes |   Yes |   Optional |     Yes | Optional |            Yes |
 | Export analytics        |   Yes |   Yes |   Optional |     Yes |       No |            Yes |
 | Manage members          |   Yes |   Yes |         No |      No |       No |            Yes |
-| Manage domains          |   Yes |   Yes |         No |      No |       No |            Yes |
 | Manage API keys         |   Yes |   Yes |         No |      No |       No |            Yes |
 | Manage billing          |   Yes |    No |         No |      No |       No |            Yes |
 | Quarantine link         |    No |    No |         No |      No |       No |            Yes |
@@ -328,7 +312,7 @@ Admin actions require explicit permissions and produce immutable audit entries.
 
 ### Performance
 
-- Redirect resolution does one indexed domain/slug lookup and one bounded event write.
+- Redirect resolution does one indexed hostname/slug lookup and one bounded event write.
 - Dashboard list endpoints use cursor pagination and enforce maximum page sizes.
 - Analytics queries use precomputed daily aggregates after the rollup milestone.
 - MongoDB client is initialized once per warm function instance and reused.
@@ -362,7 +346,6 @@ Admin actions require explicit permissions and produce immutable audit entries.
 - Building a full identity provider for other products.
 - Sending marketing email infrastructure ourselves.
 - Guaranteeing exact bot/human identification.
-- Automatic purchase of domains.
 - Server-side malware scanning without an approved provider.
 - Native mobile apps.
 - Real-time collaborative editing.
@@ -370,33 +353,31 @@ Admin actions require explicit permissions and produce immutable audit entries.
 
 ## 11. Risks and mitigations
 
-| Risk                                                   | Impact                          | Mitigation                                                                                    |
-| ------------------------------------------------------ | ------------------------------- | --------------------------------------------------------------------------------------------- |
-| Node.js runtime and serverless connection reuse        | Deployment or runtime surprises | Keep a warm-instance MongoClient singleton and a portable Express entrypoint                  |
-| Serverless database connection bursts                  | MongoDB connection exhaustion   | Reuse a global MongoClient, cap pool size, set timeouts, colocate region                      |
-| Public short links attract abuse                       | Reputation and legal risk       | Quotas, blocklists, reporting, quarantine, rate limits, destination validation, admin tooling |
-| Raw analytics becomes privacy-sensitive                | Compliance and trust risk       | Minimize IP data, retention controls, consent, aggregation, export/delete                     |
-| 301 caching prevents destination edits                 | Broken campaigns                | Default to 302; warn before 301; document cache behavior                                      |
-| Analytics write slows redirects                        | Latency and failed clicks       | Bounded event write, graceful degradation, later queue/rollup pipeline                        |
-| Custom domain automation depends on Vercel permissions | Onboarding friction             | Manual DNS verification first; automate after provider contract is proven                     |
-| Feature breadth delays launch                          | No usable product               | Ship by phase gates; implement P0 end-to-end before P1                                        |
+| Risk                                            | Impact                          | Mitigation                                                                                    |
+| ----------------------------------------------- | ------------------------------- | --------------------------------------------------------------------------------------------- |
+| Node.js runtime and serverless connection reuse | Deployment or runtime surprises | Keep a warm-instance MongoClient singleton and a portable Express entrypoint                  |
+| Serverless database connection bursts           | MongoDB connection exhaustion   | Reuse a global MongoClient, cap pool size, set timeouts, colocate region                      |
+| Public short links attract abuse                | Reputation and legal risk       | Quotas, blocklists, reporting, quarantine, rate limits, destination validation, admin tooling |
+| Raw analytics becomes privacy-sensitive         | Compliance and trust risk       | Minimize IP data, retention controls, consent, aggregation, export/delete                     |
+| 301 caching prevents destination edits          | Broken campaigns                | Default to 302; warn before 301; document cache behavior                                      |
+| Analytics write slows redirects                 | Latency and failed clicks       | Bounded event write, graceful degradation, later queue/rollup pipeline                        |
+| Feature breadth delays launch                   | No usable product               | Ship by phase gates; implement P0 end-to-end before P1                                        |
 
 ## 12. Approval gates
 
 Before implementation, approve or change these decisions:
 
-1. Working name and primary domain strategy.
+1. Working name and platform short-link hostname strategy.
 2. Authentication choice: email/password first, OAuth optional, MFA in Phase 1.
 3. Anonymous shortening enabled or disabled by default.
 4. Default redirect status: recommended `302`.
 5. Analytics privacy and raw-event retention policy.
 6. Whether paid plans/billing are part of the first release or only feature entitlements.
-7. Whether custom domains are manual in MVP or required for launch.
-8. Whether deployment must remain fully Vercel-hosted even if Node.js runtime constraints appear.
+7. Whether deployment must remain fully Vercel-hosted even if Node.js runtime constraints appear.
 
 ## 13. Research basis
 
-The scope was informed by feature sets publicly described by Bitly, Rebrandly, Short.io, Dub, and TinyURL: branded/custom domains, aliases, QR codes, detailed click/device/geography/referrer analytics, teams/roles, bulk/API workflows, targeting, expiration, password protection, deep links, A/B testing, exports, and conversion attribution.
+The scope was informed by feature sets publicly described by Bitly, Rebrandly, Short.io, Dub, and TinyURL: aliases, QR codes, detailed click/device/geography/referrer analytics, teams/roles, bulk/API workflows, targeting, expiration, password protection, deep links, A/B testing, exports, and conversion attribution.
 
 - [Bitly URL shortener features](https://bitly.com/pages/products/url-shortener/)
 - [Rebrandly analytics](https://www.rebrandly.com/analytics)

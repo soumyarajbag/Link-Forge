@@ -42,7 +42,6 @@ export const openapiDocument = {
     { name: 'Health', description: 'Service health and API contract metadata' },
     { name: 'Auth', description: 'Registration, sessions, password recovery, and CSRF' },
     { name: 'Workspaces', description: 'Workspace and membership management' },
-    { name: 'Domains', description: 'Custom redirect domains' },
     { name: 'Links', description: 'Short links, QR codes, and link analytics' },
     { name: 'Abuse', description: 'Public abuse reporting' },
     { name: 'API keys', description: 'Scoped automation credentials' },
@@ -287,41 +286,6 @@ export const openapiDocument = {
         security: [{ cookieAuth: [] }],
         parameters: [parameter('workspaceID', 'Workspace identifier'), parameter('invitationID', 'Invitation identifier')],
         responses: secured({ '200': response('Invitation revoked') }, [{ cookieAuth: [] }]),
-      },
-    },
-    '/v1/workspaces/{workspaceID}/domains': {
-      get: {
-        tags: ['Domains'],
-        summary: 'List workspace domains',
-        parameters: [parameter('workspaceID', 'Workspace identifier')],
-        responses: secured({ '200': response('Domains', 'DomainsResponse') }),
-      },
-      post: {
-        tags: ['Domains'],
-        summary: 'Add a custom domain',
-        security: [{ cookieAuth: [] }],
-        parameters: [parameter('workspaceID', 'Workspace identifier')],
-        requestBody: requestBody('DomainRequest'),
-        responses: secured({ '201': response('Domain created', 'DomainVerificationResponse') }, [{ cookieAuth: [] }]),
-      },
-    },
-    '/v1/domains/{domainID}/verify': {
-      post: {
-        tags: ['Domains'],
-        summary: 'Verify a custom domain',
-        security: [{ cookieAuth: [] }],
-        parameters: [parameter('domainID', 'Domain identifier')],
-        requestBody: requestBody('VerifyDomainRequest'),
-        responses: secured({ '200': response('Domain verified', 'DomainResponse') }, [{ cookieAuth: [] }]),
-      },
-    },
-    '/v1/domains/{domainID}': {
-      delete: {
-        tags: ['Domains'],
-        summary: 'Delete a custom domain',
-        security: [{ cookieAuth: [] }],
-        parameters: [parameter('domainID', 'Domain identifier')],
-        responses: secured({ '200': response('Domain deleted') }, [{ cookieAuth: [] }]),
       },
     },
     '/v1/invitations/{token}': {
@@ -673,17 +637,6 @@ export const openapiDocument = {
           },
         },
       },
-      Domain: {
-        type: 'object',
-        properties: {
-          id: { type: 'string' },
-          workspace_id: { type: 'string' },
-          hostname: { type: 'string' },
-          kind: { type: 'string', enum: ['platform', 'custom'] },
-          status: { type: 'string', enum: ['pending', 'active', 'disabled'] },
-          verified_at: { type: 'string', format: 'date-time' },
-        },
-      },
       RoutingRule: {
         type: 'object',
         required: ['destination'],
@@ -703,7 +656,6 @@ export const openapiDocument = {
         properties: {
           id: { type: 'string' },
           workspace_id: { type: 'string' },
-          domain_id: { type: 'string' },
           hostname: { type: 'string' },
           slug: { type: 'string' },
           destination_url: { type: 'string', format: 'uri' },
@@ -834,12 +786,9 @@ export const openapiDocument = {
           permissions: { type: 'array', items: { type: 'string', maxLength: 80 } },
         },
       },
-      DomainRequest: { type: 'object', required: ['hostname'], properties: { hostname: { type: 'string', maxLength: 253 } } },
-      VerifyDomainRequest: { type: 'object', required: ['token'], properties: { token: { type: 'string' } } },
       LinkWriteFields: {
         type: 'object',
         properties: {
-          domain_id: { type: 'string' },
           destination_url: { type: 'string', format: 'uri', pattern: '^https?://' },
           slug: { type: 'string', maxLength: 50 },
           redirect_status: { type: 'integer', enum: [301, 302, 307, 308], default: 302 },
@@ -1024,33 +973,6 @@ export const openapiDocument = {
         type: 'object',
         properties: { data: { type: 'object', properties: { member: ref('Member') } }, request_id: { type: 'string' } },
       },
-      DomainResponse: {
-        type: 'object',
-        properties: { data: { type: 'object', properties: { domain: ref('Domain') } }, request_id: { type: 'string' } },
-      },
-      DomainVerificationResponse: {
-        type: 'object',
-        properties: {
-          data: {
-            type: 'object',
-            properties: {
-              domain: ref('Domain'),
-              verification: {
-                type: 'object',
-                properties: { type: { type: 'string' }, hostname: { type: 'string' }, value: { type: 'string' } },
-              },
-            },
-          },
-          request_id: { type: 'string' },
-        },
-      },
-      DomainsResponse: {
-        type: 'object',
-        properties: {
-          data: { type: 'object', properties: { domains: { type: 'array', items: ref('Domain') } } },
-          request_id: { type: 'string' },
-        },
-      },
       LinkResponse: {
         type: 'object',
         properties: {
@@ -1195,12 +1117,6 @@ const operationDescriptions: Record<string, Record<string, string>> = {
   '/v1/invitations/accept': {
     post: "Accepts a pending invitation for the authenticated user's matching email and adds that user to the workspace.",
   },
-  '/v1/workspaces/{workspaceID}/domains': {
-    get: 'Lists custom and platform domains attached to a workspace.',
-    post: 'Registers a custom hostname and returns the DNS verification instructions.',
-  },
-  '/v1/domains/{domainID}/verify': { post: 'Verifies a custom domain using the submitted DNS verification token and activates it.' },
-  '/v1/domains/{domainID}': { delete: 'Deletes a custom domain after checking workspace administrator permissions.' },
   '/v1/workspaces/{workspaceID}/links': {
     get: 'Returns a paginated, searchable list of non-deleted links scoped to the workspace.',
     post: 'Creates a short link after validating the destination, slug, routing rules, and workspace permissions.',

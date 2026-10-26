@@ -21,6 +21,21 @@ The API listens on `http://localhost:8080` by default. Check it with:
 Invoke-RestMethod http://localhost:8080/health
 ```
 
+### Request logging
+
+Development uses a readable, colorized request log. Each completed request
+shows its method, sanitized URL, status, duration, payload sizes, request ID,
+authentication method, actor/workspace identifiers, client IP, and user agent.
+Sensitive query values and invitation tokens are redacted; request bodies,
+cookies, authorization headers, and API-key secrets are never logged.
+
+```env
+LOG_FORMAT=pretty
+```
+
+Use `LOG_FORMAT=json` for structured production logs. When the variable is
+omitted, development defaults to `pretty` and production defaults to `json`.
+
 Registration creates a pending account and sends a six-digit email OTP. Verify
 it with `POST /v1/auth/verify-email` before the browser session is issued. A
 workspace admin can invite any email address; the recipient can register or
@@ -80,6 +95,7 @@ the concrete repositories are wired only in `src/container.ts`.
 - `GET|POST /v1/workspaces/:workspaceID/links`
 - `GET|PATCH|DELETE /v1/links/:linkID`
 - `GET /v1/links/:linkID/analytics`
+- `GET|POST /v1/workspaces/:workspaceID/api-keys`, `DELETE /v1/workspaces/:workspaceID/api-keys/:keyID`
 - `GET /v1/admin/overview`, `GET /v1/admin/users`, `GET /v1/admin/workspaces`, `GET /v1/admin/links`
 - `GET /v1/admin/audit-logs`, `GET|PATCH /v1/admin/abuse-reports`, `GET|POST /v1/admin/blocked-destinations`
 - `POST /v1/admin/links/:linkID/quarantine`

@@ -173,15 +173,17 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
               <WorkspacePicker compact workspace={workspace} workspaces={workspaces} onSelect={setWorkspace} />
               <span className="h-7 w-px bg-ink/10" />
               <span className="font-medium text-ink">
-                {pathname.includes('/admin')
-                  ? 'Platform admin'
-                  : pathname.includes('analytics')
-                    ? 'Analytics'
-                    : pathname.includes('links')
-                      ? 'All links'
-                      : pathname.includes('settings')
-                        ? 'Settings'
-                        : 'Overview'}
+                {pathname.includes('/api-docs')
+                  ? 'API Documentation'
+                  : pathname.includes('/admin')
+                    ? 'Platform Admin'
+                    : pathname.includes('analytics')
+                      ? 'Analytics'
+                      : pathname.includes('links')
+                        ? 'All links'
+                        : pathname.includes('settings')
+                          ? 'Settings'
+                          : 'Overview'}
               </span>
             </div>
             <div className="flex items-center gap-2">

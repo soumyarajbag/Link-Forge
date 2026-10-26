@@ -4,7 +4,6 @@ import type { BaseDocument } from './base.model.js';
 export type ClickEventDocument = BaseDocument & {
   link_id: ObjectId;
   workspace_id: ObjectId;
-  domain_id?: ObjectId;
   occurred_at: Date;
   event_type: 'redirect' | 'qr_scan';
   unique_key: string;

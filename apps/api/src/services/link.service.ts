@@ -5,7 +5,6 @@ import type { Actor } from '../models/actor.model.js';
 import type { LinkDocument, RoutingRule } from '../models/link.model.js';
 import type { ListOptions } from '../models/list-options.model.js';
 import type { LinkRepository } from '../repositories/link.repository.js';
-import type { WorkspaceRepository } from '../repositories/workspace.repository.js';
 import type { MongoAnalyticsRepository } from '../repositories/analytics.repository.js';
 import type { AdminRepository } from '../repositories/admin.repository.js';
 import { AuthorizationService } from './authorization.service.js';
@@ -17,7 +16,6 @@ import { isDuplicateKey } from '../config/database.js';
 export type RoutingRuleInput = Omit<RoutingRule, 'id' | 'priority' | 'enabled'> & Partial<Pick<RoutingRule, 'id' | 'priority' | 'enabled'>>;
 export type CreateLinkInput = {
   workspaceId: ObjectId;
-  domainId?: ObjectId;
   destinationUrl: string;
   slug?: string;
   redirectStatus?: 301 | 302 | 307 | 308;
@@ -45,7 +43,6 @@ export type ResolveInput = {
 export class LinkService {
   constructor(
     private readonly links: LinkRepository,
-    private readonly workspaces: WorkspaceRepository,
     private readonly analytics: MongoAnalyticsRepository,
     private readonly admin: AdminRepository,
     private readonly authorization: AuthorizationService,
@@ -58,17 +55,7 @@ export class LinkService {
     if (!validateDestination(input.destinationUrl)) throw errors.validation();
     const destination = normalizeDestination(input.destinationUrl);
     if (await this.admin.isBlocked(destination.toLowerCase())) throw errors.forbidden();
-    let hostname = normalizeHost(this.config.defaultShortDomain);
-    let domainId = input.domainId;
-    if (domainId) {
-      const domain = await this.workspaces.findDomain(domainId);
-      if (!domain) throw errors.notFound();
-      if (!domain.workspace_id.equals(input.workspaceId) || domain.status !== 'active') throw errors.forbidden();
-      hostname = domain.hostname;
-    } else {
-      const domain = await this.workspaces.findDomainByHost(hostname);
-      if (domain) domainId = domain._id;
-    }
+    const hostname = normalizeHost(this.config.defaultShortDomain);
     const suppliedSlug = normalizeSlug(input.slug || '');
     if (suppliedSlug && !validSlug(suppliedSlug)) throw errors.validation('invalid slug');
     const now = new Date();
@@ -77,7 +64,6 @@ export class LinkService {
       : undefined;
     const link: Omit<LinkDocument, '_id'> = {
       workspace_id: input.workspaceId,
-      domain_id: domainId,
       hostname,
       slug: suppliedSlug,
       destination_url: destination,
@@ -183,7 +169,6 @@ export class LinkService {
     const event = {
       link_id: link._id,
       workspace_id: link.workspace_id,
-      domain_id: link.domain_id,
       occurred_at: now,
       event_type: 'redirect' as const,
       unique_key: `${hashIp(input.ip || '')}:${now.toISOString().slice(0, 10)}`,
