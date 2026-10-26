@@ -1,0 +1,28 @@
+{
+  "name": "linkforge",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "apps/*"
+  ],
+  "scripts": {
+    "dev:api": "npm run dev --workspace=apps/api",
+    "dev:web": "npm run dev --workspace=apps/web",
+    "build": "npm run build --workspaces --if-present",
+    "build:api": "npm run build --workspace=apps/api",
+    "build:web": "npm run build --workspace=apps/web",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "typecheck:api": "npm run typecheck --workspace=apps/api",
+    "typecheck:web": "npm run typecheck --workspace=apps/web",
+    "test": "npm run test --workspaces --if-present",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "deploy:api": "vercel ./apps/api",
+    "deploy:api:prod": "vercel ./apps/api --prod",
+    "deploy:web": "vercel ./apps/web",
+    "deploy:web:prod": "vercel ./apps/web --prod"
+  },
+  "devDependencies": {
+    "prettier": "^3.6.2"
+  }
+}
