@@ -1,5 +1,13 @@
 import { z } from 'zod';
 
+const environmentBoolean = z.preprocess((value) => {
+  if (typeof value !== 'string') return value;
+  const normalized = value.trim().toLowerCase();
+  if (['true', '1', 'yes', 'on'].includes(normalized)) return true;
+  if (['false', '0', 'no', 'off'].includes(normalized)) return false;
+  return value;
+}, z.boolean());
+
 const rawEnv = z.object({
   APP_ENV: z.string().default('development'),
   LOG_FORMAT: z.enum(['pretty', 'json']).optional(),
@@ -13,8 +21,8 @@ const rawEnv = z.object({
   ALLOWED_ORIGINS: z.string().default('http://localhost:3000,http://localhost:8080'),
   SESSION_TTL: z.string().default('168h'),
   SESSION_IDLE_TTL: z.string().default('24h'),
-  COOKIE_SECURE: z.coerce.boolean().default(false),
-  EXPOSE_DEV_TOKENS: z.coerce.boolean().default(true),
+  COOKIE_SECURE: environmentBoolean.default(false),
+  EXPOSE_DEV_TOKENS: environmentBoolean.optional(),
   PASSWORD_MEMORY_KIB: z.coerce.number().int().min(16_384).default(65_536),
   PASSWORD_ITERATIONS: z.coerce.number().int().min(2).default(3),
   PASSWORD_PARALLELISM: z.coerce.number().int().positive().default(2),
@@ -26,7 +34,7 @@ const rawEnv = z.object({
   SMTP_PORT: z.coerce.number().int().positive().default(587),
   SMTP_USER: z.string().default(''),
   SMTP_PASSWORD: z.string().default(''),
-  SMTP_SECURE: z.coerce.boolean().default(false),
+  SMTP_SECURE: environmentBoolean.default(false),
   EMAIL_VERIFICATION_TTL: z.string().default('15m'),
   EMAIL_VERIFICATION_RESEND_COOLDOWN: z.string().default('60s'),
   SEED_ADMIN_EMAIL: z.string().default(''),
@@ -82,6 +90,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
   const rateLimitWindowMs = parseDuration(parsed.RATE_LIMIT_WINDOW, 'RATE_LIMIT_WINDOW');
   const emailVerificationTtlMs = parseDuration(parsed.EMAIL_VERIFICATION_TTL, 'EMAIL_VERIFICATION_TTL');
   const emailVerificationResendCooldownMs = parseDuration(parsed.EMAIL_VERIFICATION_RESEND_COOLDOWN, 'EMAIL_VERIFICATION_RESEND_COOLDOWN');
+  const exposeDevTokens = parsed.EXPOSE_DEV_TOKENS ?? parsed.APP_ENV !== 'production';
   if (sessionIdleTtlMs > sessionTtlMs) throw new Error('SESSION_IDLE_TTL must not exceed SESSION_TTL');
   if ((parsed.SEED_ADMIN_EMAIL === '') !== (parsed.SEED_ADMIN_PASSWORD === ''))
     throw new Error('SEED_ADMIN_EMAIL and SEED_ADMIN_PASSWORD must be provided together');
@@ -92,7 +101,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     throw new Error('SMTP_HOST is required in production so verification emails can be delivered');
   if (parsed.APP_ENV === 'production' && parsed.EMAIL_FROM.includes('localhost'))
     throw new Error('EMAIL_FROM must be configured with a real sender in production');
-  if (parsed.APP_ENV === 'production' && parsed.EXPOSE_DEV_TOKENS) throw new Error('EXPOSE_DEV_TOKENS must be false in production');
+  if (parsed.APP_ENV === 'production' && exposeDevTokens) throw new Error('EXPOSE_DEV_TOKENS must be false in production');
   return {
     environment: parsed.APP_ENV,
     logFormat: parsed.LOG_FORMAT || (parsed.APP_ENV === 'production' ? 'json' : 'pretty'),
@@ -109,7 +118,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     sessionTtlMs,
     sessionIdleTtlMs,
     cookieSecure: parsed.COOKIE_SECURE,
-    exposeDevTokens: parsed.EXPOSE_DEV_TOKENS,
+    exposeDevTokens,
     passwordMemoryKiB: parsed.PASSWORD_MEMORY_KIB,
     passwordIterations: parsed.PASSWORD_ITERATIONS,
     passwordParallelism: parsed.PASSWORD_PARALLELISM,

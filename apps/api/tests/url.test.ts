@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { loadConfig } from '../src/config/env.js';
 import { requestLogLevel, sanitizeRequestTarget } from '../src/middleware/request-logger.middleware.js';
 import { normalizeHost, normalizeSlug, validateDestination, validSlug } from '../src/utils/url.js';
 
@@ -22,6 +23,35 @@ test('maps HTTP statuses to request log severity', () => {
   assert.equal(requestLogLevel(204), 'info');
   assert.equal(requestLogLevel(404), 'warn');
   assert.equal(requestLogLevel(503), 'error');
+});
+
+test('parses false environment booleans without treating them as truthy strings', () => {
+  const config = loadConfig({ COOKIE_SECURE: 'false', SMTP_SECURE: 'false', EXPOSE_DEV_TOKENS: 'false' });
+  assert.equal(config.cookieSecure, false);
+  assert.equal(config.smtpSecure, false);
+  assert.equal(config.exposeDevTokens, false);
+});
+
+test('disables exposed development tokens by default in production', () => {
+  const config = loadConfig({
+    APP_ENV: 'production',
+    SMTP_HOST: 'smtp.example.com',
+    EMAIL_FROM: 'LinkForge <no-reply@example.com>',
+  });
+  assert.equal(config.exposeDevTokens, false);
+});
+
+test('rejects explicitly exposed development tokens in production', () => {
+  assert.throws(
+    () =>
+      loadConfig({
+        APP_ENV: 'production',
+        SMTP_HOST: 'smtp.example.com',
+        EMAIL_FROM: 'LinkForge <no-reply@example.com>',
+        EXPOSE_DEV_TOKENS: 'true',
+      }),
+    /EXPOSE_DEV_TOKENS must be false in production/,
+  );
 });
 
 test('accepts safe HTTP destinations and rejects unsafe URLs', () => {
