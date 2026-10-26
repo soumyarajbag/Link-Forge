@@ -40,6 +40,16 @@ export function createApp(container: AppContainer) {
     }),
   );
 
+  app.get('/', (_request, response) => {
+    response.status(200).json({
+      service: 'linkforge-api',
+      status: 'ok',
+      docs: '/docs',
+      health: '/health',
+      version: '0.2.0',
+    });
+  });
+
   app.get(
     '/health',
     asyncHandler(async (request, response) => {
