@@ -90,6 +90,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
   const rateLimitWindowMs = parseDuration(parsed.RATE_LIMIT_WINDOW, 'RATE_LIMIT_WINDOW');
   const emailVerificationTtlMs = parseDuration(parsed.EMAIL_VERIFICATION_TTL, 'EMAIL_VERIFICATION_TTL');
   const emailVerificationResendCooldownMs = parseDuration(parsed.EMAIL_VERIFICATION_RESEND_COOLDOWN, 'EMAIL_VERIFICATION_RESEND_COOLDOWN');
+  const cookieSecure = parsed.APP_ENV === 'production' ? true : parsed.COOKIE_SECURE;
   const exposeDevTokens = parsed.APP_ENV === 'production' ? false : (parsed.EXPOSE_DEV_TOKENS ?? true);
   if (sessionIdleTtlMs > sessionTtlMs) throw new Error('SESSION_IDLE_TTL must not exceed SESSION_TTL');
   if ((parsed.SEED_ADMIN_EMAIL === '') !== (parsed.SEED_ADMIN_PASSWORD === ''))
@@ -116,7 +117,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
       .filter(Boolean),
     sessionTtlMs,
     sessionIdleTtlMs,
-    cookieSecure: parsed.COOKIE_SECURE,
+    cookieSecure,
     exposeDevTokens,
     passwordMemoryKiB: parsed.PASSWORD_MEMORY_KIB,
     passwordIterations: parsed.PASSWORD_ITERATIONS,

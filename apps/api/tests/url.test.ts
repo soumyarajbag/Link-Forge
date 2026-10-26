@@ -39,6 +39,17 @@ test('disables exposed development tokens by default in production', () => {
     EMAIL_FROM: 'LinkForge <no-reply@example.com>',
   });
   assert.equal(config.exposeDevTokens, false);
+  assert.equal(config.cookieSecure, true);
+});
+
+test('forces secure cookies in production even when a stale variable says false', () => {
+  const config = loadConfig({
+    APP_ENV: 'production',
+    COOKIE_SECURE: 'false',
+    SMTP_HOST: 'smtp.example.com',
+    EMAIL_FROM: 'LinkForge <no-reply@example.com>',
+  });
+  assert.equal(config.cookieSecure, true);
 });
 
 test('forces exposed development tokens off in production even when configured true', () => {

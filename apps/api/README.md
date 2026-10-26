@@ -47,6 +47,9 @@ cooldown. For local development, leave SMTP blank and
 Production always forces `EXPOSE_DEV_TOKENS` off, even if a stale deployment
 variable says otherwise. Set it to `false` outside local development for
 configuration clarity, and configure SMTP before enabling registration.
+Production also forces secure cookies with `SameSite=None`, which is required
+when the frontend and API use separate HTTPS origins. Local HTTP development
+keeps `COOKIE_SECURE=false` and `SameSite=Lax`.
 
 For example, a Gmail SMTP setup uses a Google app password rather than the
 normal account password:
