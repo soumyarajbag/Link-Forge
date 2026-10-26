@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { apiMutation, ApiError } from '@/lib/api';
 import type { LinkItem } from '@/lib/types';
+import { AppLoader } from '@/components/app-loader';
 
 export function CreateLinkDialog({
   open,
@@ -95,8 +96,13 @@ export function CreateLinkDialog({
               Cancel
             </Button>
             <Button type="submit" disabled={busy}>
-              {busy ? 'Creating…' : 'Create link'}
-              <Icon name="arrow" size={15} />
+              {busy ? (
+                <AppLoader size="xs" label="Creating…" />
+              ) : (
+                <>
+                  Create link <Icon name="arrow" size={15} />
+                </>
+              )}
             </Button>
           </DialogFooter>
         </form>

@@ -2,7 +2,8 @@
 
 import Link from 'next/link';
 import { FormEvent, useEffect, useState } from 'react';
-import { BookOpen, Check, Copy, KeyRound, Loader2, ShieldCheck, Trash2 } from 'lucide-react';
+import { BookOpen, Check, Copy, KeyRound, ShieldCheck, Trash2 } from 'lucide-react';
+import { AppLoader } from '@/components/app-loader';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -195,8 +196,13 @@ export function ApiKeysSettings({ workspaceId, workspaceName }: { workspaceId: s
               </div>
 
               <Button type="submit" className="w-full" disabled={busy || !name.trim() || scopes.length === 0}>
-                {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <KeyRound className="h-4 w-4" />}
-                {busy ? 'Generating…' : 'Generate API key'}
+                {busy ? (
+                  <AppLoader size="xs" label="Generating…" />
+                ) : (
+                  <>
+                    <KeyRound className="h-4 w-4" /> Generate API key
+                  </>
+                )}
               </Button>
             </form>
           </CardContent>
@@ -212,11 +218,7 @@ export function ApiKeysSettings({ workspaceId, workspaceName }: { workspaceId: s
           </CardHeader>
           <CardContent>
             {loading ? (
-              <div className="grid min-h-52 place-items-center text-sm text-muted-foreground">
-                <span className="inline-flex items-center gap-2">
-                  <Loader2 className="h-4 w-4 animate-spin" /> Loading API keys…
-                </span>
-              </div>
+              <AppLoader variant="panel" size="md" label="Loading API keys…" className="min-h-52 border-0 bg-transparent" />
             ) : keys.length ? (
               <div className="space-y-3">
                 {keys.map((key) => {
@@ -239,8 +241,12 @@ export function ApiKeysSettings({ workspaceId, workspaceName }: { workspaceId: s
                           onClick={() => setKeyToRevoke(key)}
                           className="text-destructive hover:bg-destructive/10 hover:text-destructive"
                         >
-                          {revokingId === key.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
-                          Revoke
+                          {revokingId === key.id ? (
+                            <AppLoader variant="icon" size="xs" label={`Revoking ${key.name}…`} />
+                          ) : (
+                            <Trash2 className="h-3.5 w-3.5" />
+                          )}
+                          {revokingId === key.id ? 'Revoking…' : 'Revoke'}
                         </Button>
                       </div>
                       <div className="mt-4 flex flex-wrap gap-1.5">

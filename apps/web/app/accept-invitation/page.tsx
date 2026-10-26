@@ -6,6 +6,7 @@ import { ApiError, apiMutation, apiRequest } from '@/lib/api';
 import type { User, Workspace, WorkspaceInvitation } from '@/lib/types';
 import { Logo } from '@/components/ui';
 import { Card } from '@/components/ui/card';
+import { AppLoader } from '@/components/app-loader';
 
 type InvitationDetails = {
   invitation: Pick<WorkspaceInvitation, 'id' | 'email' | 'role' | 'expires_at'>;
@@ -66,7 +67,14 @@ export default function AcceptInvitationPage() {
         <Card className="shine-border p-6 sm:p-8">
           <p className="text-[11px] font-bold uppercase tracking-[.18em] text-coral-600">Workspace invitation</p>
           <h1 className="mt-3 text-3xl font-semibold tracking-[-.06em]">You’ve been invited.</h1>
-          {details ? (
+          {busy ? (
+            <AppLoader
+              variant="panel"
+              size="md"
+              label="Accepting invitation…"
+              className="mt-6 min-h-40 rounded-2xl border-coral/15 bg-coral-50/60"
+            />
+          ) : details ? (
             <>
               <p className="mt-3 text-sm leading-6 text-ink/55">
                 <strong className="text-ink">{details.workspace.name}</strong> invited{' '}
@@ -96,8 +104,15 @@ export default function AcceptInvitationPage() {
                   : 'Create your account and verify the invited email to join this workspace.'}
               </p>
             </>
+          ) : error ? (
+            <div className="mt-6 rounded-2xl bg-coral-50 px-4 py-3 text-sm text-coral-700">{error}</div>
           ) : (
-            <div className="mt-6 rounded-2xl bg-coral-50 px-4 py-3 text-sm text-coral-700">{error || 'Loading invitation…'}</div>
+            <AppLoader
+              variant="panel"
+              size="md"
+              label="Loading invitation…"
+              className="mt-6 min-h-32 rounded-2xl border-coral/15 bg-coral-50/60"
+            />
           )}
           {error && details && <p className="mt-4 rounded-xl bg-coral-50 px-3 py-2 text-sm text-coral-600">{error}</p>}
         </Card>

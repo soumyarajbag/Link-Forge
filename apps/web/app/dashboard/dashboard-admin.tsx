@@ -9,7 +9,6 @@ import {
   ChevronRight,
   ExternalLink,
   Link2,
-  Loader2,
   MousePointerClick,
   Search,
   ShieldAlert,
@@ -17,6 +16,7 @@ import {
   Users,
   type LucideIcon,
 } from 'lucide-react';
+import { AppLoader } from '@/components/app-loader';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -220,8 +220,13 @@ export function PlatformAdminView() {
           </p>
         </div>
         <Button variant="outline" onClick={() => setRefreshKey((value) => value + 1)} disabled={loading}>
-          {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Activity className="h-4 w-4" />}
-          Refresh data
+          {loading ? (
+            <AppLoader size="xs" label="Refreshing…" />
+          ) : (
+            <>
+              <Activity className="h-4 w-4" /> Refresh data
+            </>
+          )}
         </Button>
       </div>
 
@@ -519,8 +524,13 @@ function LinksPanel({ links, actionId, onQuarantine }: { links: AdminLink[]; act
                   disabled={actionId === item.id || item.state === 'quarantined' || item.state === 'deleted'}
                   onClick={() => onQuarantine(item)}
                 >
-                  {actionId === item.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Ban className="h-3.5 w-3.5" />}
-                  Quarantine
+                  {actionId === item.id ? (
+                    <AppLoader size="xs" label="Quarantining…" />
+                  ) : (
+                    <>
+                      <Ban className="h-3.5 w-3.5" /> Quarantine
+                    </>
+                  )}
                 </Button>
               </td>
             </tr>
@@ -629,18 +639,21 @@ function ModerationPanel({
                   <p className="mt-2 text-sm leading-6 text-muted-foreground">{report.details || 'No additional details were provided.'}</p>
                   <p className="mt-2 font-mono text-[11px] text-muted-foreground">Link {report.link_id}</p>
                 </div>
-                <select
-                  aria-label="Update abuse report status"
-                  disabled={actionId === report.id}
-                  value={report.status}
-                  onChange={(event) => onUpdateReport(report, event.target.value as AbuseReport['status'])}
-                  className="h-10 rounded-xl border border-input bg-card px-3 text-xs font-semibold outline-none focus:ring-4 focus:ring-ring/15"
-                >
-                  <option value="open">Open</option>
-                  <option value="reviewing">Reviewing</option>
-                  <option value="resolved">Resolved</option>
-                  <option value="dismissed">Dismissed</option>
-                </select>
+                <div className="flex items-center gap-2">
+                  {actionId === report.id && <AppLoader variant="icon" size="xs" label="Updating report…" />}
+                  <select
+                    aria-label="Update abuse report status"
+                    disabled={actionId === report.id}
+                    value={report.status}
+                    onChange={(event) => onUpdateReport(report, event.target.value as AbuseReport['status'])}
+                    className="h-10 rounded-xl border border-input bg-card px-3 text-xs font-semibold outline-none focus:ring-4 focus:ring-ring/15"
+                  >
+                    <option value="open">Open</option>
+                    <option value="reviewing">Reviewing</option>
+                    <option value="resolved">Resolved</option>
+                    <option value="dismissed">Dismissed</option>
+                  </select>
+                </div>
               </div>
             </div>
           ))}
@@ -657,8 +670,13 @@ function ModerationPanel({
             <Input value={pattern} onChange={(event) => setPattern(event.target.value)} placeholder="malicious.example" />
             <Input value={reason} onChange={(event) => setReason(event.target.value)} placeholder="Reason (optional)" />
             <Button type="submit" className="w-full" disabled={!pattern.trim() || actionId === 'block'}>
-              {actionId === 'block' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Ban className="h-4 w-4" />}
-              Block destination
+              {actionId === 'block' ? (
+                <AppLoader size="xs" label="Blocking…" />
+              ) : (
+                <>
+                  <Ban className="h-4 w-4" /> Block destination
+                </>
+              )}
             </Button>
           </form>
           <div className="mt-5 space-y-2">
@@ -753,13 +771,7 @@ function EmptyState({ icon: EmptyIcon, text }: { icon: LucideIcon; text: string 
 }
 
 function LoadingPanel() {
-  return (
-    <div className="grid min-h-80 place-items-center rounded-3xl border border-border/70 bg-card/70">
-      <div className="text-center text-sm text-muted-foreground">
-        <Loader2 className="mx-auto mb-3 h-7 w-7 animate-spin text-primary" /> Loading platform data…
-      </div>
-    </div>
-  );
+  return <AppLoader variant="panel" size="md" label="Loading platform data…" className="min-h-80" />;
 }
 
 function Notice({ children, tone }: { children: React.ReactNode; tone: 'error' | 'success' }) {

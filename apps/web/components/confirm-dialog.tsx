@@ -1,6 +1,7 @@
 'use client';
 
-import { Loader2, TriangleAlert } from 'lucide-react';
+import { TriangleAlert } from 'lucide-react';
+import { AppLoader } from '@/components/app-loader';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
@@ -43,8 +44,7 @@ export function ConfirmDialog({
             Cancel
           </Button>
           <Button type="button" variant="destructive" disabled={busy} onClick={() => void onConfirm()}>
-            {busy && <Loader2 className="h-4 w-4 animate-spin" />}
-            {busy ? pendingLabel : confirmLabel}
+            {busy ? <AppLoader size="xs" label={pendingLabel} /> : confirmLabel}
           </Button>
         </DialogFooter>
       </DialogContent>

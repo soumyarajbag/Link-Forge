@@ -10,12 +10,14 @@ import { LinkTable } from './dashboard-link-table';
 import { StatCard } from './dashboard-stat-card';
 import { Badge, Button, SectionLabel } from '@/components/ui';
 import { useDashboardContext } from './dashboard-shell';
+import { AppLoader } from '@/components/app-loader';
 
 export function DashboardOverview() {
   const { workspace, user } = useDashboardContext();
   const [links, setLinks] = useState<LinkItem[]>([]);
   const [createOpen, setCreateOpen] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [pendingLinkId, setPendingLinkId] = useState('');
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -54,6 +56,7 @@ export function DashboardOverview() {
   async function togglePause(id: string) {
     const current = links.find((link) => link.id === id);
     if (!current) return;
+    setPendingLinkId(id);
     const nextState = current.state === 'paused' ? 'active' : 'paused';
     setLinks((items) => items.map((link) => (link.id === id ? { ...link, state: nextState } : link)));
     try {
@@ -61,6 +64,8 @@ export function DashboardOverview() {
     } catch (cause: unknown) {
       setLinks((items) => items.map((link) => (link.id === id ? { ...link, state: current.state } : link)));
       setError(cause instanceof Error ? cause.message : 'Unable to update the link.');
+    } finally {
+      setPendingLinkId('');
     }
   }
 
@@ -103,7 +108,7 @@ export function DashboardOverview() {
             </Link>
           </div>
           {loading ? (
-            <div className="h-52 animate-pulse rounded-2xl bg-paper" />
+            <AppLoader variant="panel" size="md" label="Loading workspace activity…" className="min-h-52 rounded-2xl bg-paper" />
           ) : activity.length ? (
             <>
               <div className="flex h-52 items-end gap-2 border-b border-ink/[.08] px-1 pb-0">
@@ -165,7 +170,7 @@ export function DashboardOverview() {
         </div>
       </div>
       <div className="mt-5">
-        <LinkTable links={links.slice(0, 4)} onCreate={() => setCreateOpen(true)} onPause={togglePause} />
+        <LinkTable links={links.slice(0, 4)} onCreate={() => setCreateOpen(true)} onPause={togglePause} pendingLinkId={pendingLinkId} />
       </div>
       <CreateLinkDialog open={createOpen} onClose={() => setCreateOpen(false)} onCreated={addLink} workspaceId={workspace.id} />
     </div>

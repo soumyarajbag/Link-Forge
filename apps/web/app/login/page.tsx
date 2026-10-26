@@ -7,6 +7,7 @@ import { Icon } from '@/components/icons';
 import { Button, Logo } from '@/components/ui';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { AppLoader } from '@/components/app-loader';
 
 export default function LoginPage() {
   const [mode, setMode] = useState<'login' | 'register'>('login');
@@ -129,14 +130,23 @@ export default function LoginPage() {
               minLength={mode === 'register' ? 12 : 1}
             />
             <Button type="submit" disabled={busy || invitationLoading || !email} className="mt-3 w-full py-3">
-              {busy
-                ? mode === 'register'
-                  ? 'Sending verification code…'
-                  : 'Opening your workspace…'
-                : mode === 'login'
-                  ? 'Sign in'
-                  : 'Create account'}
-              <Icon name="arrow" size={16} />
+              {busy || invitationLoading ? (
+                <AppLoader
+                  size="xs"
+                  label={
+                    invitationLoading
+                      ? 'Loading invitation…'
+                      : mode === 'register'
+                        ? 'Sending verification code…'
+                        : 'Opening your workspace…'
+                  }
+                />
+              ) : (
+                <>
+                  {mode === 'login' ? 'Sign in' : 'Create account'}
+                  <Icon name="arrow" size={16} />
+                </>
+              )}
             </Button>
             {mode === 'login' && (
               <div className="text-right">

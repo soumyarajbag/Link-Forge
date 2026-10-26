@@ -9,6 +9,7 @@ import type { User, Workspace } from '@/lib/types';
 import { Icon } from '@/components/icons';
 import { Logo } from '@/components/ui';
 import { Button } from '@/components/ui/button';
+import { AppLoader } from '@/components/app-loader';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -114,12 +115,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
         </div>
       </main>
     );
-  if (!user || !workspace)
-    return (
-      <main className="grid min-h-screen place-items-center bg-paper">
-        <div className="h-12 w-12 animate-pulse rounded-2xl bg-coral/30" aria-label="Loading workspaces" />
-      </main>
-    );
+  if (!user || !workspace) return <AppLoader variant="page" size="lg" label="Loading your workspace…" />;
 
   const navigation = user.is_platform_admin ? [...nav, adminNavItem] : nav;
 
@@ -158,8 +154,13 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
               onClick={logout}
               className="flex w-full items-center justify-center gap-2 rounded-xl border border-border/70 bg-card/75 px-3 py-2.5 text-sm font-semibold text-muted-foreground shadow-sm transition-all hover:border-destructive/20 hover:bg-destructive/10 hover:text-destructive disabled:opacity-50"
             >
-              <LogOut className="h-4 w-4" />
-              {loggingOut ? 'Signing out…' : 'Sign out'}
+              {loggingOut ? (
+                <AppLoader size="xs" label="Signing out…" />
+              ) : (
+                <>
+                  <LogOut className="h-4 w-4" /> Sign out
+                </>
+              )}
             </button>
           </div>
         </aside>

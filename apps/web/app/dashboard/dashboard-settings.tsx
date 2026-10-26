@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ApiKeysSettings } from './dashboard-api-keys';
 import { ConfirmDialog } from '@/components/confirm-dialog';
+import { AppLoader } from '@/components/app-loader';
 
 const memberRoles: Array<WorkspaceMember['role']> = ['admin', 'editor', 'analyst', 'viewer'];
 
@@ -23,7 +24,8 @@ export function SettingsView() {
   const [invitations, setInvitations] = useState<WorkspaceInvitation[]>([]);
   const [newMemberEmail, setNewMemberEmail] = useState('');
   const [newMemberRole, setNewMemberRole] = useState<WorkspaceMember['role']>('editor');
-  const [busy, setBusy] = useState(false);
+  const [busyAction, setBusyAction] = useState<'create' | 'save' | ''>('');
+  const [loadingWorkspace, setLoadingWorkspace] = useState(true);
   const [memberBusyId, setMemberBusyId] = useState('');
   const [invitationToRevoke, setInvitationToRevoke] = useState<WorkspaceInvitation | null>(null);
   const [memberToRemove, setMemberToRemove] = useState<WorkspaceMember | null>(null);
@@ -45,6 +47,7 @@ export function SettingsView() {
     setInvitationLink('');
     setError('');
     setMessage('');
+    setLoadingWorkspace(true);
 
     apiRequest<{ members: WorkspaceMember[] }>(`/v1/workspaces/${workspace.id}/members`)
       .then(async (memberData) => {
@@ -57,6 +60,9 @@ export function SettingsView() {
       })
       .catch((cause: unknown) => {
         if (mounted) setError(cause instanceof Error ? cause.message : 'Unable to load workspace management data.');
+      })
+      .finally(() => {
+        if (mounted) setLoadingWorkspace(false);
       });
     return () => {
       mounted = false;
@@ -76,7 +82,7 @@ export function SettingsView() {
 
   async function saveWorkspace() {
     if (!name.trim()) return;
-    setBusy(true);
+    setBusyAction('save');
     setError('');
     setMessage('');
     try {
@@ -87,13 +93,13 @@ export function SettingsView() {
     } catch (cause: unknown) {
       setError(cause instanceof ApiError ? cause.message : 'Unable to save workspace.');
     } finally {
-      setBusy(false);
+      setBusyAction('');
     }
   }
 
   async function createWorkspace() {
     if (!newWorkspaceName.trim()) return;
-    setBusy(true);
+    setBusyAction('create');
     setError('');
     setMessage('');
     try {
@@ -104,7 +110,7 @@ export function SettingsView() {
     } catch (cause: unknown) {
       setError(cause instanceof ApiError ? cause.message : 'Unable to create workspace.');
     } finally {
-      setBusy(false);
+      setBusyAction('');
     }
   }
 
@@ -188,6 +194,19 @@ export function SettingsView() {
     }
   }
 
+  if (loadingWorkspace) {
+    return (
+      <div className="animate-slide-up max-w-5xl">
+        <SectionLabel
+          eyebrow="Make it yours"
+          title="Workspace settings"
+          detail="Create and switch workspaces, manage team access, and configure developer credentials."
+        />
+        <AppLoader variant="panel" size="md" label="Loading workspace settings…" className="min-h-[28rem]" />
+      </div>
+    );
+  }
+
   return (
     <div className="animate-slide-up max-w-5xl">
       <SectionLabel
@@ -214,8 +233,8 @@ export function SettingsView() {
                 placeholder="e.g. Acme marketing"
                 className="min-w-0 flex-1 rounded-xl border border-ink/10 bg-paper px-3.5 py-3 text-sm outline-none focus:border-coral/50"
               />
-              <Button disabled={busy || !newWorkspaceName.trim()} onClick={createWorkspace}>
-                Create workspace
+              <Button disabled={Boolean(busyAction) || !newWorkspaceName.trim()} onClick={createWorkspace}>
+                {busyAction === 'create' ? <AppLoader size="xs" label="Creating…" /> : 'Create workspace'}
               </Button>
             </div>
           </SettingsCard>
@@ -265,8 +284,10 @@ export function SettingsView() {
               />
             </label>
             <div className="mt-5 flex items-center gap-3">
-              <Button disabled={busy || !canManage} onClick={saveWorkspace}>
-                {saved ? (
+              <Button disabled={Boolean(busyAction) || !canManage} onClick={saveWorkspace}>
+                {busyAction === 'save' ? (
+                  <AppLoader size="xs" label="Saving…" />
+                ) : saved ? (
                   <>
                     <Icon name="check" size={15} /> Saved
                   </>
@@ -329,6 +350,7 @@ export function SettingsView() {
                       Remove
                     </button>
                   )}
+                  {memberBusyId === member.user_id && <AppLoader variant="icon" size="xs" label="Updating member…" />}
                 </div>
               ))}
             </div>
@@ -355,7 +377,7 @@ export function SettingsView() {
                     ))}
                   </select>
                   <Button disabled={memberBusyId === 'new' || !newMemberEmail.trim()} onClick={addMember}>
-                    Send invitation
+                    {memberBusyId === 'new' ? <AppLoader size="xs" label="Sending…" /> : 'Send invitation'}
                   </Button>
                 </div>
                 {invitations.length > 0 && (

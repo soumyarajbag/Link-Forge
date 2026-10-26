@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { apiRequest } from '@/lib/api';
 import type { AnalyticsSummary, LinkItem } from '@/lib/types';
 import { useDashboardContext } from './dashboard-shell';
+import { AppLoader } from '@/components/app-loader';
 import { Icon } from '@/components/icons';
 import { Badge, Button, SectionLabel } from '@/components/ui';
 
@@ -78,10 +79,7 @@ export function AnalyticsView() {
       </div>
       {error && <div className="mb-5 rounded-2xl border border-coral/20 bg-coral-50 px-4 py-3 text-sm text-coral-600">{error}</div>}
       {loading ? (
-        <div className="grid gap-5">
-          <div className="h-28 animate-pulse rounded-3xl bg-white" />
-          <div className="h-72 animate-pulse rounded-3xl bg-white" />
-        </div>
+        <AppLoader variant="panel" size="md" label="Loading analytics…" className="min-h-[25rem]" />
       ) : (
         <>
           <div className="grid gap-4 sm:grid-cols-3">

@@ -5,8 +5,19 @@ import type { LinkItem } from '@/lib/types';
 import { shortURL } from '@/lib/api';
 import { Icon } from '@/components/icons';
 import { Badge, Button, CopyButton } from '@/components/ui';
+import { AppLoader } from '@/components/app-loader';
 
-export function LinkTable({ links, onCreate, onPause }: { links: LinkItem[]; onCreate: () => void; onPause: (id: string) => void }) {
+export function LinkTable({
+  links,
+  onCreate,
+  onPause,
+  pendingLinkId = '',
+}: {
+  links: LinkItem[];
+  onCreate: () => void;
+  onPause: (id: string) => void;
+  pendingLinkId?: string;
+}) {
   const [search, setSearch] = useState('');
   const filtered = useMemo(
     () => links.filter((link) => `${link.title} ${link.slug} ${link.destination_url}`.toLowerCase().includes(search.toLowerCase())),
@@ -79,14 +90,20 @@ export function LinkTable({ links, onCreate, onPause }: { links: LinkItem[]; onC
                   )}
                 </td>
                 <td className="px-5 py-4 text-right">
-                  <div className="flex justify-end gap-1 opacity-0 transition group-hover:opacity-100">
+                  <div
+                    className={`flex justify-end gap-1 transition ${pendingLinkId === link.id ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}
+                  >
                     <button
-                      disabled={link.state !== 'active' && link.state !== 'paused'}
+                      disabled={pendingLinkId === link.id || (link.state !== 'active' && link.state !== 'paused')}
                       onClick={() => onPause(link.id)}
                       className="rounded-lg p-2 text-ink/35 hover:bg-ink/[.05] hover:text-ink disabled:opacity-30"
-                      aria-label="Toggle link"
+                      aria-label={link.state === 'paused' ? 'Resume link' : 'Pause link'}
                     >
-                      <Icon name={link.state === 'paused' ? 'check' : 'pause'} size={15} />
+                      {pendingLinkId === link.id ? (
+                        <AppLoader variant="icon" size="xs" label="Updating link…" />
+                      ) : (
+                        <Icon name={link.state === 'paused' ? 'check' : 'pause'} size={15} />
+                      )}
                     </button>
                     <a
                       href={shortURL(link.slug, link.hostname)}

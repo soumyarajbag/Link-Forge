@@ -8,6 +8,7 @@ import { Button, Logo } from '@/components/ui';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { AppLoader } from '@/components/app-loader';
 
 export default function ResetPasswordPage() {
   const [token, setToken] = useState('');
@@ -103,8 +104,13 @@ export default function ResetPasswordPage() {
               </div>
               {error && <p className="rounded-xl bg-coral-50 px-3 py-2 text-sm text-coral-600">{error}</p>}
               <Button type="submit" disabled={busy} className="w-full py-3">
-                {busy ? 'Updating…' : 'Update password'}
-                <Icon name="arrow" size={16} />
+                {busy ? (
+                  <AppLoader size="xs" label="Updating…" />
+                ) : (
+                  <>
+                    Update password <Icon name="arrow" size={16} />
+                  </>
+                )}
               </Button>
             </form>
           )}

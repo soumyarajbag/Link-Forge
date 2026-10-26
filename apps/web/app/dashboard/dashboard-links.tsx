@@ -9,6 +9,7 @@ import { LinkTable } from './dashboard-link-table';
 import { Icon } from '@/components/icons';
 import { Badge, Button, SectionLabel } from '@/components/ui';
 import { useDashboardContext } from './dashboard-shell';
+import { AppLoader } from '@/components/app-loader';
 
 export function LinksView() {
   const { workspace } = useDashboardContext();
@@ -17,6 +18,7 @@ export function LinksView() {
   const [open, setOpen] = useState(false);
   const [filter, setFilter] = useState<'all' | 'active' | 'paused'>('all');
   const [loading, setLoading] = useState(true);
+  const [pendingLinkId, setPendingLinkId] = useState('');
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -46,6 +48,7 @@ export function LinksView() {
   async function togglePause(id: string) {
     const current = links.find((link) => link.id === id);
     if (!current) return;
+    setPendingLinkId(id);
     const nextState = current.state === 'paused' ? 'active' : 'paused';
     setLinks((items) => items.map((link) => (link.id === id ? { ...link, state: nextState } : link)));
     try {
@@ -53,6 +56,8 @@ export function LinksView() {
     } catch (cause: unknown) {
       setLinks((items) => items.map((link) => (link.id === id ? { ...link, state: current.state } : link)));
       setError(cause instanceof Error ? cause.message : 'Unable to update the link.');
+    } finally {
+      setPendingLinkId('');
     }
   }
 
@@ -80,9 +85,9 @@ export function LinksView() {
         </div>
       </div>
       {loading ? (
-        <div className="h-96 animate-pulse rounded-3xl bg-white/60" />
+        <AppLoader variant="panel" size="md" label="Loading links…" className="min-h-96" />
       ) : (
-        <LinkTable links={visible} onCreate={() => setOpen(true)} onPause={togglePause} />
+        <LinkTable links={visible} onCreate={() => setOpen(true)} onPause={togglePause} pendingLinkId={pendingLinkId} />
       )}
       <CreateLinkDialog
         open={open}
