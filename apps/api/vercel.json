@@ -1,18 +1,11 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "outputDirectory": "dist",
+  "framework": "express",
+  "buildCommand": "echo Vercel native Express TypeScript bundling",
   "functions": {
-    "api/index.ts": { "maxDuration": 30 }
-  },
-  "rewrites": [
-    { "source": "/", "destination": "/api/index?route=/" },
-    { "source": "/v1/:path*", "destination": "/api/index?route=/v1/:path*" },
-    { "source": "/health", "destination": "/api/index?route=/health" },
-    { "source": "/docs", "destination": "/api/index?route=/docs" },
-    { "source": "/docs/:path*", "destination": "/api/index?route=/docs/:path*" },
-    { "source": "/openapi.json", "destination": "/api/index?route=/openapi.json" },
-    { "source": "/openapi.yaml", "destination": "/api/index?route=/openapi.yaml" },
-    { "source": "/r/:slug", "destination": "/api/index?route=/r/:slug" },
-    { "source": "/:slug", "destination": "/api/index?route=/r/:slug" }
-  ]
+    "src/server.ts": {
+      "maxDuration": 60,
+      "includeFiles": "node_modules/swagger-ui-dist/**/*"
+    }
+  }
 }

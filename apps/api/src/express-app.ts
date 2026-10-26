@@ -27,16 +27,16 @@ export function createApp(container: AppContainer) {
   app.disable('x-powered-by');
 
   app.use(requestContext);
-  app.use(helmet());
+  app.use((helmet as unknown as () => RequestHandler)());
   app.use(cors({ origin: config.allowedOrigins, credentials: true }));
   app.use(express.json({ limit: '1mb', strict: true }));
   app.use(
-    rateLimit({
+    (rateLimit as unknown as (options: unknown) => RequestHandler)({
       windowMs: config.rateLimitWindowMs,
       limit: config.rateLimitRequests,
       standardHeaders: 'draft-8',
       legacyHeaders: false,
-      skip: (request) => request.path === '/health',
+      skip: (request: express.Request) => request.path === '/health',
     }),
   );
 
