@@ -44,8 +44,9 @@ accepted after authentication (or immediately after OTP verification).
 `POST /v1/auth/verify-email/resend` issues a replacement code after the resend
 cooldown. For local development, leave SMTP blank and
 `EXPOSE_DEV_TOKENS=true`: the API logs the OTP and includes it in the response.
-Set `EXPOSE_DEV_TOKENS=false` outside local development and configure SMTP
-before enabling registration in production.
+Production always forces `EXPOSE_DEV_TOKENS` off, even if a stale deployment
+variable says otherwise. Set it to `false` outside local development for
+configuration clarity, and configure SMTP before enabling registration.
 
 For example, a Gmail SMTP setup uses a Google app password rather than the
 normal account password:

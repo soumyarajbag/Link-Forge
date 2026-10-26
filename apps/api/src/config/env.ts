@@ -90,7 +90,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
   const rateLimitWindowMs = parseDuration(parsed.RATE_LIMIT_WINDOW, 'RATE_LIMIT_WINDOW');
   const emailVerificationTtlMs = parseDuration(parsed.EMAIL_VERIFICATION_TTL, 'EMAIL_VERIFICATION_TTL');
   const emailVerificationResendCooldownMs = parseDuration(parsed.EMAIL_VERIFICATION_RESEND_COOLDOWN, 'EMAIL_VERIFICATION_RESEND_COOLDOWN');
-  const exposeDevTokens = parsed.EXPOSE_DEV_TOKENS ?? parsed.APP_ENV !== 'production';
+  const exposeDevTokens = parsed.APP_ENV === 'production' ? false : (parsed.EXPOSE_DEV_TOKENS ?? true);
   if (sessionIdleTtlMs > sessionTtlMs) throw new Error('SESSION_IDLE_TTL must not exceed SESSION_TTL');
   if ((parsed.SEED_ADMIN_EMAIL === '') !== (parsed.SEED_ADMIN_PASSWORD === ''))
     throw new Error('SEED_ADMIN_EMAIL and SEED_ADMIN_PASSWORD must be provided together');
@@ -101,7 +101,6 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     throw new Error('SMTP_HOST is required in production so verification emails can be delivered');
   if (parsed.APP_ENV === 'production' && parsed.EMAIL_FROM.includes('localhost'))
     throw new Error('EMAIL_FROM must be configured with a real sender in production');
-  if (parsed.APP_ENV === 'production' && exposeDevTokens) throw new Error('EXPOSE_DEV_TOKENS must be false in production');
   return {
     environment: parsed.APP_ENV,
     logFormat: parsed.LOG_FORMAT || (parsed.APP_ENV === 'production' ? 'json' : 'pretty'),

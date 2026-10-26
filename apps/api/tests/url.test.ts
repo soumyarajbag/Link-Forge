@@ -41,17 +41,14 @@ test('disables exposed development tokens by default in production', () => {
   assert.equal(config.exposeDevTokens, false);
 });
 
-test('rejects explicitly exposed development tokens in production', () => {
-  assert.throws(
-    () =>
-      loadConfig({
-        APP_ENV: 'production',
-        SMTP_HOST: 'smtp.example.com',
-        EMAIL_FROM: 'LinkForge <no-reply@example.com>',
-        EXPOSE_DEV_TOKENS: 'true',
-      }),
-    /EXPOSE_DEV_TOKENS must be false in production/,
-  );
+test('forces exposed development tokens off in production even when configured true', () => {
+  const config = loadConfig({
+    APP_ENV: 'production',
+    SMTP_HOST: 'smtp.example.com',
+    EMAIL_FROM: 'LinkForge <no-reply@example.com>',
+    EXPOSE_DEV_TOKENS: 'true',
+  });
+  assert.equal(config.exposeDevTokens, false);
 });
 
 test('accepts safe HTTP destinations and rejects unsafe URLs', () => {
