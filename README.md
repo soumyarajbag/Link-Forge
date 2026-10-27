@@ -20,6 +20,119 @@ Links use the single platform hostname configured by `DEFAULT_SHORT_DOMAIN` and
 `SHORT_BASE_URL`. Workspace-managed custom domains are not part of the current
 product.
 
+## Application Data Flow
+
+The diagram below shows the main user, workspace, link, analytics, invitation,
+and platform-administration paths. Solid boundaries represent application
+components; decision branches show the conditions that change the next step.
+
+```mermaid
+flowchart TD
+    Visitor([Visitor]) --> Web[Next.js web application]
+    Web --> PublicAPI[Public Express API]
+
+    subgraph Authentication[Authentication and onboarding]
+        Register[Register with email and password] --> SendOTP[Send six-digit email OTP]
+        SendOTP --> Verify{Email verified?}
+        Verify -- No --> Resend[Resend OTP or remain pending]
+        Resend --> SendOTP
+        Verify -- Yes --> CreateSession[Create secure session]
+        Login[Sign in] --> LoginCheck{Account verified?}
+        LoginCheck -- No --> SendOTP
+        LoginCheck -- Yes --> CreateSession
+        CreateSession --> WorkspaceList[List accessible workspaces]
+    end
+
+    Web --> Register
+    Web --> Login
+    PublicAPI --> Register
+    PublicAPI --> Login
+    PublicAPI --> Verify
+    PublicAPI --> CreateSession
+    PublicAPI --> WorkspaceList
+    SendOTP --> Mail[(Nodemailer / SMTP)]
+
+    subgraph Invitations[Workspace invitation flow]
+        Invite[Admin invites an email] --> InvitationMail[Send invitation email]
+        InvitationMail --> InvitationPage[Open invitation link]
+        InvitationPage --> HasAccount{Account already exists?}
+        HasAccount -- Yes --> Login
+        HasAccount -- No --> Register
+        CreateSession --> Accept[Accept invitation for matching email]
+        Accept --> Membership[Create workspace membership with invited role]
+        Membership --> WorkspaceList
+    end
+
+    WorkspaceList --> SelectWorkspace[Select active workspace]
+    SelectWorkspace --> RoleCheck{Workspace role / permission}
+    RoleCheck -- Owner or Admin --> Manage[Manage workspace, members, invitations, API keys]
+    RoleCheck -- Editor --> EditLinks[Create, edit, pause, and restore links]
+    RoleCheck -- Analyst --> ReadData[Read links and analytics]
+    RoleCheck -- Viewer --> ViewOnly[View permitted workspace data]
+
+    subgraph LinkLifecycle[Link lifecycle]
+        CreateLink[Submit destination, slug, campaign, and options] --> Validate[Validate request and permissions]
+        Validate --> PersistLink[(MongoDB link document)]
+        PersistLink --> ShortURL[Return short URL]
+        ShortURL --> PublicRedirect[Visitor opens /r/:slug]
+        PublicRedirect --> LinkState{Link active and within limits?}
+        LinkState -- No --> Stop[Return unavailable response]
+        LinkState -- Yes --> ClickEvent[(Persist click event)]
+        ClickEvent --> Destination[Redirect to destination URL]
+        ClickEvent --> Analytics[Aggregate analytics by date, country, device, and referrer]
+    end
+
+    EditLinks --> CreateLink
+    Manage --> CreateLink
+    PublicAPI --> Validate
+    Visitor --> PublicRedirect
+    PublicRedirect --> PublicAPI
+    Analytics --> ReadData
+    Analytics --> DashboardAnalytics[Dashboard analytics]
+
+    subgraph Integrations[Programmatic access]
+        GenerateKey[Owner/Admin creates scoped API key] --> StoreHash[(Store key hash and scopes)]
+        Client[Trusted server integration] --> APIKeyHeader[Send X-API-Key header]
+        APIKeyHeader --> ScopeCheck{Key active and scope allowed?}
+        ScopeCheck -- No --> Deny[Return authorization error]
+        ScopeCheck -- Yes --> Validate
+        StoreHash --> ScopeCheck
+    end
+
+    Manage --> GenerateKey
+    PublicAPI --> ScopeCheck
+
+    subgraph PlatformAdmin[Platform administration]
+        AdminUser[Platform administrator] --> AdminCheck{is_platform_admin = true?}
+        AdminCheck -- No --> DenyAdmin[Return forbidden response]
+        AdminCheck -- Yes --> AdminConsole[View all users, workspaces, links, and audit activity]
+        AdminConsole --> Moderation[Review abuse reports, quarantine links, block destinations]
+        AdminConsole --> Audit[Inspect human-readable audit activity]
+    end
+
+    CreateSession --> AdminUser
+    PublicAPI --> AdminCheck
+    Manage --> AuditEvent[(Persist audit event)]
+    EditLinks --> AuditEvent
+    GenerateKey --> AuditEvent
+    Moderation --> AuditEvent
+    AuditEvent --> Audit
+
+    classDef client fill:#fff4f0,stroke:#f07c62,color:#2d2942;
+    classDef api fill:#f2efff,stroke:#7168bd,color:#2d2942;
+    classDef store fill:#eefaf3,stroke:#47b77a,color:#2d2942;
+    classDef decision fill:#fff8ec,stroke:#f5a543,color:#2d2942;
+    class Visitor,Web,Client client;
+    class PublicAPI,Register,Login,CreateSession,WorkspaceList,Invite,Accept,Validate api;
+    class Mail,PersistLink,ClickEvent,Analytics,StoreHash,AuditEvent store;
+    class LoginCheck,HasAccount,RoleCheck,LinkState,ScopeCheck,AdminCheck,Verify decision;
+```
+
+At a high level, the API is the policy and persistence boundary: the web app
+renders the flows, Express validates and authorizes requests, MongoDB stores
+users/workspaces/links/events, SMTP delivers OTP and invitation messages, and
+the redirect path records a click before sending the visitor to the destination.
+
 ## Monorepo Structure
 
 ```text
